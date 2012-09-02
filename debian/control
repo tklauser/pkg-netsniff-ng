@@ -17,6 +17,8 @@ Maintainer: Daniel Borkmann <daniel@netsniff-ng.org>
 Uploaders: Kartik Mistry <kartik@debian.org>
 Standards-Version: 3.9.3
 Homepage: http://www.netsniff-ng.org/
+Vcs-Git: git://anonscm.debian.org/collab-maint/netsniff-ng.git
+Vcs-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/netsniff-ng;a=summary
 
 Package: netsniff-ng
 Architecture: amd64 i386 powerpc sparc
