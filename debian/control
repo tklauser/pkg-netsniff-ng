@@ -21,7 +21,7 @@ Vcs-Git: git://anonscm.debian.org/collab-maint/netsniff-ng.git
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/netsniff-ng;a=summary
 
 Package: netsniff-ng
-Architecture: amd64 i386 powerpc sparc
+Architecture: amd64 ia64 i386 mips powerpc sparc
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Recommends: ntp
 Description: packet sniffing beast
