@@ -1,11 +1,17 @@
 netsniff-ng (0.5.8~rc5-1) experimental; urgency=low
 
-  * New upstream RC release.
+  * New upstream RC release:
+    + Removed patches merged in upstream.
   * debian/control:
     + Added VCS-* fields.
     + Enabled ia64 and mips archs as liburcu-dev supports them now.
     + Updated build-depends to libnl-3-dev (Closes: #688171)
     + Updated Standards-Version to 3.9.5
+  * debian/rules:
+    + Fixed clean target.
+    + Fixed hardening support.
+  * debian/docs:
+    + Documentation/ folder no longer exists.
 
  -- Kartik Mistry <kartik@debian.org>  Mon, 10 Mar 2014 18:28:13 +0530
 

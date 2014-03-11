@@ -9,6 +9,9 @@
 DPKG_EXPORT_BUILDFLAGS = 1
 include /usr/share/dpkg/buildflags.mk
 
+CFLAGS+=$(CPPFLAGS)
+CXXFLAGS+=$(CPPFLAGS)
+
 #NACL needs this
 export NACL_INC_DIR=/usr/include/nacl
 export NACL_LIB_DIR=/usr/lib
@@ -30,7 +33,8 @@ build-stamp: configure-stamp
 clean:
 	dh_testdir
 	dh_testroot
-	rm -f build-stamp configure-stamp config.log
+	rm -f build-stamp configure-stamp config.log Config config.h
+	rm -rf src
 	dh_clean
 
 install: build
