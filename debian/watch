@@ -1,3 +1,4 @@
 version=3
-opts=dversionmangle=s/~// \
- http://www.netsniff-ng.org/pub/netsniff-ng/netsniff-ng-(.*)\.tar\.gz
+opts=uversionmangle=s/-(rc\d*)$/~$1/ \
+http://www.netsniff-ng.org/pub/netsniff-ng/ \
+(?:|.*/)netsniff-ng[_\-]v?(\d\S*)\.(?:tar\.xz|txz|tar\.bz2|tbz2|tar\.gz|tgz)
