@@ -1,10 +1,13 @@
-netsniff-ng (0.5.7-2) UNRELEASED; urgency=low
+netsniff-ng (0.5.8~rc5-1) experimental; urgency=low
 
+  * New upstream RC release.
   * debian/control:
     + Added VCS-* fields.
     + Enabled ia64 and mips archs as liburcu-dev supports them now.
+    + Updated build-depends to libnl-3-dev (Closes: #688171)
+    + Updated Standards-Version to 3.9.5
 
- -- Kartik Mistry <kartik@debian.org>  Sun, 02 Sep 2012 19:45:06 +0530
+ -- Kartik Mistry <kartik@debian.org>  Mon, 10 Mar 2014 18:28:13 +0530
 
 netsniff-ng (0.5.7-1) unstable; urgency=low
 

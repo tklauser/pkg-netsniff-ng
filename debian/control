@@ -10,18 +10,22 @@ Build-Depends: bison,
                libgeoip-dev,
                libnacl-dev,
                libncurses5-dev,
+               libnet1-dev,
                libnetfilter-conntrack-dev,
-               libnl-dev,
-               liburcu-dev
+               libnl-3-dev,
+               libnl-genl-3-dev,
+               libpcap-dev,
+               liburcu-dev,
+               zlib1g-dev
 Maintainer: Daniel Borkmann <daniel@netsniff-ng.org>
 Uploaders: Kartik Mistry <kartik@debian.org>
-Standards-Version: 3.9.3
+Standards-Version: 3.9.5
 Homepage: http://www.netsniff-ng.org/
 Vcs-Git: git://anonscm.debian.org/collab-maint/netsniff-ng.git
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/netsniff-ng;a=summary
 
 Package: netsniff-ng
-Architecture: amd64 ia64 i386 mips powerpc sparc
+Architecture: amd64 i386 ia64 mips powerpc sparc
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Recommends: ntp
 Description: packet sniffing beast

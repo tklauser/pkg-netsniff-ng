@@ -9,21 +9,28 @@
 DPKG_EXPORT_BUILDFLAGS = 1
 include /usr/share/dpkg/buildflags.mk
 
+#NACL needs this
+export NACL_INC_DIR=/usr/include/nacl
+export NACL_LIB_DIR=/usr/lib
+
+configure: configure-stamp
+configure-stamp:
+	dh_testdir
+	./configure
+	touch $@
+
 build: build-arch build-indep
 build-arch: build-stamp
 build-indep: build-stamp
-build-stamp:
+build-stamp: configure-stamp
 	dh_testdir
-	mkdir -p src/build; cd src/build; \
-	cmake -DCMAKE_INSTALL_PREFIX=/usr ..; \
-	$(MAKE) DESTDIR=$(CURDIR)/debian/netsniff-ng all
+	$(MAKE) PREFIX=$(CURDIR)/debian/netsniff-ng all
 	touch $@
 
 clean:
 	dh_testdir
 	dh_testroot
-	rm -f build-stamp
-	rm -rf src/build
+	rm -f build-stamp configure-stamp config.log
 	dh_clean
 
 install: build
@@ -31,7 +38,7 @@ install: build
 	dh_testroot
 	dh_prep
 	dh_installdirs
-	cd src/build; $(MAKE) install DESTDIR=$(CURDIR)/debian/netsniff-ng
+	$(MAKE) PREFIX=$(CURDIR)/debian/netsniff-ng install
 
 # Build architecture-independent files here.
 binary-indep: build install
@@ -44,7 +51,7 @@ binary-arch: build install
 	dh_installdocs
 	dh_installexamples
 	dh_installman
-	dh_installchangelogs -k Documentation/RelNotes/Notes-0.5.7
+	dh_installchangelogs
 	dh_strip
 	dh_compress
 	dh_fixperms
@@ -55,4 +62,4 @@ binary-arch: build install
 	dh_builddeb
 
 binary: binary-arch binary-indep
-.PHONY: build build-arch build-indep clean binary-indep binary-arch binary install
+.PHONY: build build-arch build-indep clean binary-indep binary-arch binary install configure
