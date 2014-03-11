@@ -27,14 +27,12 @@ build-arch: build-stamp
 build-indep: build-stamp
 build-stamp: configure-stamp
 	dh_testdir
-	$(MAKE) PREFIX=$(CURDIR)/debian/netsniff-ng all
+	$(MAKE)
 	touch $@
 
 clean:
 	dh_testdir
 	dh_testroot
-	rm -f build-stamp configure-stamp config.log Config config.h
-	rm -rf src
 	dh_clean
 
 install: build

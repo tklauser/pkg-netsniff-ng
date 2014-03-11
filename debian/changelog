@@ -2,6 +2,9 @@ netsniff-ng (0.5.8~rc5-2) experimental; urgency=low
 
   * debian/control:
     + Updated Daniel Borkmann's email address (Closes: #741327)
+  * debian/rules:
+    + Do not add PREFIX in make.
+    + Do not remove config.h file in clean target.
 
  -- Kartik Mistry <kartik@debian.org>  Tue, 11 Mar 2014 16:12:59 +0530
 
