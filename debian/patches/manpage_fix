@@ -32,7 +32,7 @@ index dd33985..0dc43fa 100644
  .SS -f <ttl>, --init-ttl <ttl>
  Initial TTL value to be used. This option might be useful if you are not
 diff --git a/bpfc.8 b/bpfc.8
-index 5661ccb..d267054 100644
+index 5661ccb..1cde888 100644
 --- a/bpfc.8
 +++ b/bpfc.8
 @@ -1,7 +1,6 @@
@@ -48,7 +48,7 @@ index 5661ccb..d267054 100644
  The element o is a 16 bit wide opcode that has a particular instruction
  encoded, jt and jf are two 8 bit wide jump targets, one for condition
 -''true'', one for condition ''false''. Last but not least the 32 bit wide
-+``true``, one for condition ``false``. Last but not least the 32 bit wide
++ ''true'', one for condition ''false''. Last but not least the 32 bit wide
  element k contains a miscellaneous argument that can be interpreted in
  different ways depending on the given instruction resp. opcode.
  .PP
@@ -76,8 +76,20 @@ index 35b3c25..761f4a7 100644
  .TH FLOWTOP 8 "03 March 2013" "Linux" "netsniff-ng toolkit"
  .SH NAME
  flowtop \- top-like netfilter TCP/UDP/SCTP/DCCP/ICMP(v6) flow tracking
+diff --git a/ifpps.8 b/ifpps.8
+index 5eeec29..b60e7b8 100644
+--- a/ifpps.8
++++ b/ifpps.8
+@@ -1,7 +1,6 @@
+ .\" netsniff-ng - the packet sniffing beast
+ .\" Copyright 2013 Daniel Borkmann.
+ .\" Subject to the GPL, version 2.
+-.PP
+ .TH IFPPS 8 "03 March 2013" "Linux" "netsniff-ng toolkit"
+ .SH NAME
+ ifpps \- top-like networking and system statistics
 diff --git a/mausezahn.8 b/mausezahn.8
-index eaa2c9d..eef0023 100644
+index eaa2c9d..3b5afa3 100644
 --- a/mausezahn.8
 +++ b/mausezahn.8
 @@ -1,7 +1,6 @@
@@ -93,7 +105,7 @@ index eaa2c9d..eef0023 100644
  .PP
  mausezahn provides a built-in context-specific help. Append the keyword
 -''help'' after the configuration options. The most important options
-+`help` after the configuration options. The most important options
++ ''help'' after the configuration options. The most important options
  are:
  .PP
  .SS -x [<port>]
@@ -111,7 +123,7 @@ index eaa2c9d..eef0023 100644
  layer 2 mode or to the destination hosts or gateway interface MAC address in normal
  (IP) mode. You can use the same keywords as mentioned above, as well as
 -''bc'' or ''bcast'', ''cisco'', and ''stp''. Please note that for the destination
-+`bc` or ''bcast'', ''cisco'', and ''stp''. Please note that for the destination
++ ''bc'' or ''bcast'', ''cisco'', and ''stp''. Please note that for the destination
  MAC address the ''rand'' keyword is supported but creates a random address only
  once, even when you send multiple packets.
  .PP
@@ -128,7 +140,7 @@ index eaa2c9d..eef0023 100644
  .SS -T <packet-type>
  Make this mausezahn instance the receiving station. Currently, only ''rtp'' is
 diff --git a/netsniff-ng.8 b/netsniff-ng.8
-index 3ca48d0..01996de 100644
+index 3ca48d0..c6356bf 100644
 --- a/netsniff-ng.8
 +++ b/netsniff-ng.8
 @@ -1,7 +1,6 @@
@@ -139,8 +151,17 @@ index 3ca48d0..01996de 100644
  .TH NETSNIFF-NG 8 "03 March 2013" "Linux" "netsniff-ng toolkit"
  .SH NAME
  netsniff-ng \- the packet sniffing beast
+@@ -350,7 +349,7 @@ the man page pcap-filter(7). Just to quote some examples from pcap-filter(7):
+ .SS host sundown
+ To select all packets arriving at or departing from sundown.
+ .PP
+-.SS host helios and \( hot or ace \)
++.SS host helios and \(hot or ace\)
+ To select traffic between helios and either hot or ace.
+ .PP
+ .SS ip host ace and not helios
 diff --git a/trafgen.8 b/trafgen.8
-index 72c2575..3e49f10 100644
+index 72c2575..6011126 100644
 --- a/trafgen.8
 +++ b/trafgen.8
 @@ -1,7 +1,6 @@
@@ -151,3 +172,12 @@ index 72c2575..3e49f10 100644
  .TH TRAFGEN 8 "03 March 2013" "Linux" "netsniff-ng toolkit"
  .SH NAME
  trafgen \- a fast, multithreaded network packet generator
+@@ -372,7 +371,7 @@ use the TX_RING, but sendto(2) packet I/O due to ''slow mode''.
+ .SS trafgen --dev wlan0 --rfraw --conf beacon-test.txf -V --cpus 2
+ As an output device ''wlan0'' is used and put into monitoring mode, thus we
+ are going to transmit raw 802.11 frames through the air. Use the
+-''beacon-test.txf'' configuration file, set trafgen into verbose mode and
++ ''beacon-test.txf'' configuration file, set trafgen into verbose mode and
+ use only 2 CPUs.
+ .PP
+ .SS trafgen --dev em1 --conf frag_dos.cfg --rand --gap 1000us
