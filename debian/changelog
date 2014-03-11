@@ -1,3 +1,10 @@
+netsniff-ng (0.5.8~rc5-2) experimental; urgency=low
+
+  * debian/control:
+    + Updated Daniel Borkmann's email address (Closes: #741327)
+
+ -- Kartik Mistry <kartik@debian.org>  Tue, 11 Mar 2014 16:12:59 +0530
+
 netsniff-ng (0.5.8~rc5-1) experimental; urgency=low
 
   * New upstream RC release:

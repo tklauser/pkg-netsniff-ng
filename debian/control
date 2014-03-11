@@ -17,7 +17,7 @@ Build-Depends: bison,
                libpcap-dev,
                liburcu-dev,
                zlib1g-dev
-Maintainer: Daniel Borkmann <daniel@netsniff-ng.org>
+Maintainer: Daniel Borkmann <daniel.borkmann@alumni.ethz.ch>
 Uploaders: Kartik Mistry <kartik@debian.org>
 Standards-Version: 3.9.5
 Homepage: http://www.netsniff-ng.org/
