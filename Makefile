@@ -16,24 +16,28 @@ endif
 VERSION = 0
 PATCHLEVEL = 5
 SUBLEVEL = 8
-EXTRAVERSION = -rc5
+EXTRAVERSION =
 NAME = Ziggomatic
 
 TOOLS ?= $(CONFIG_TOOLS)
 TOOLS ?= netsniff-ng trafgen astraceroute flowtop ifpps bpfc curvetun mausezahn
 
 # For packaging purposes, prefix can define a different path.
-PREFIX ?=
+PREFIX ?= /usr/local
 
 # Disable if you don't want it
 CCACHE ?= $(CONFIG_CCACHE)
 
+# Location of an alternative destination directory for installation
+# Useful when cross-compiling and installing in a dedicated target directory
+DESTDIR=
+
 # Location of installation paths.
-SBINDIR = $(PREFIX)/usr/sbin
-INCDIR = $(PREFIX)/usr/include
+SBINDIR = $(PREFIX)/sbin
+INCDIR = $(PREFIX)/include
 ETCDIR = $(PREFIX)/etc
 ETCDIRE = $(ETCDIR)/netsniff-ng
-MAN8DIR = $(PREFIX)/usr/share/man/man8
+MAN8DIR = $(PREFIX)/share/man/man8
 
 # Shut up make, helper warnings, parallel compilation!
 MAKEFLAGS += --no-print-directory
@@ -87,7 +91,7 @@ CFLAGS_MIN += -D_LARGEFILE64_SOURCE
 CFLAGS_MIN += -D_FILE_OFFSET_BITS=64
 CFLAGS_MIN += -DVERSION_STRING=\"$(VERSION_STRING)\"
 CFLAGS_MIN += -DVERSION_LONG=\"$(VERSION_LONG)\"
-CFLAGS_MIN += -DPREFIX_STRING=\"$(PREFIX)\"
+CFLAGS_MIN += -DETCDIRE_STRING=\"$(ETCDIRE)\"
 
 WFLAGS_DEF  = -Wall
 

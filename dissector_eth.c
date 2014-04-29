@@ -9,8 +9,8 @@
 #include "hash.h"
 #include "oui.h"
 #include "str.h"
+#include "proto.h"
 #include "protos.h"
-#include "pkt_buff.h"
 #include "dissector.h"
 #include "dissector_eth.h"
 #include "xmalloc.h"
@@ -119,15 +119,15 @@ static void dissector_init_ports(enum ports which)
 
 	switch (which) {
 	case PORTS_UDP:
-		file = PREFIX_STRING "/etc/netsniff-ng/udp.conf";
+		file = ETCDIRE_STRING "/udp.conf";
 		table = &eth_ports_udp;
 		break;
 	case PORTS_TCP:
-		file = PREFIX_STRING "/etc/netsniff-ng/tcp.conf";
+		file = ETCDIRE_STRING "/tcp.conf";
 		table = &eth_ports_tcp;
 		break;
 	case PORTS_ETHER:
-		file = PREFIX_STRING "/etc/netsniff-ng/ether.conf";
+		file = ETCDIRE_STRING "/ether.conf";
 		table = &eth_ether_types;
 		break;
 	default:

@@ -168,6 +168,8 @@ static void signal_handler(int number)
 {
 	switch (number) {
 	case SIGINT:
+	case SIGQUIT:
+	case SIGTERM:
 		sigint = 1;
 	default:
 		break;
@@ -194,7 +196,7 @@ static void __noreturn help(void)
 	     " -6|--ipv6               Use IPv6-only requests\n"
 	     " -n|--numeric            Do not do reverse DNS lookup for hops\n"
 	     " -u|--update             Update GeoIP databases\n"
-	     " -L|--latitude           Show latitude and longtitude\n"
+	     " -L|--latitude           Show latitude and longitude\n"
 	     " -N|--dns                Do a reverse DNS lookup for hops\n"
 	     " -S|--syn                Set TCP SYN flag\n"
 	     " -A|--ack                Set TCP ACK flag\n"
@@ -1089,6 +1091,8 @@ int main(int argc, char **argv)
 
 	register_signal(SIGHUP, signal_handler);
 	register_signal(SIGINT, signal_handler);
+	register_signal(SIGQUIT, signal_handler);
+	register_signal(SIGTERM, signal_handler);
 
 	tprintf_init();
 	init_geoip(1);

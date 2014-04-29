@@ -22,7 +22,7 @@ What libraries are required?
  - libncurses:		   ifpps, flowtop
  - libGeoIP >=1.4.8:	   astraceroute, flowtop, netsniff-ng
  - libz:		   astraceroute, flowtop, netsniff-ng
- - libnacl:		   curvetun
+ - libnacl or libsodium:   curvetun
  - libnetfilter-conntrack: flowtop
  - libpcap:		   mausezahn, netsniff-ng (tcpdump-like filters)
  - liburcu:		   flowtop
@@ -119,6 +119,24 @@ nacl_path.sh this way:
   $ cd curvetun
   $ ./nacl_path.sh ~/nacl/build/include/x86 ~/nacl/build/lib/x86
 
+Instead of libnacl you can also use libsodium which itself is a portable,
+cross-compilable, API compatible drop-in replacement for libnacl.
+
+In order to use libsodium you need to provide some little help when running
+the configure script, so it will be able to detect the needed header files.
+Additionally you need to configure the build to not link against libnacl
+but against libsodium.
+
+In the case libsodium was installed into /usr/local you run the netsniff-ng
+configure script this way:
+
+  $ NACL_INC_DIR=/usr/local/include/sodium NACL_LIB=sodium ./configure
+
+Alternatively you can use pkg-config for determining the include dir by
+setting the NACL_INC_DIR variable for the configure script like this:
+
+  $ NACL_INC_DIR=$(pkg-config --variable=includedir libsodium )/sodium
+
 When done, netsniff-ng's build infrastructure will read those evironment
 variables in order to get the needed paths to NaCl.
 
@@ -129,7 +147,7 @@ separation after the build/installation:
 
   $ sudo setcap cap_net_raw,cap_ipc_lock,cap_sys_admin,cap_net_admin=eip {toolname}
 
-For cross-compiling netsniff-ng, the process is faily simple. Assuming you
+For cross-compiling netsniff-ng, the process is fairly simple. Assuming you
 want to build netsniff-ng for the Microblaze architecture, update the PATH
 variable first, e.g.:
 
@@ -170,6 +188,14 @@ build and install the toolkit into prefixed path like:
 
   $ make PREFIX=<path-prefix-for-package>
   $ make PREFIX=<path-prefix-for-package> install
+
+Additionally to setting the PREFIX you can set DESTDIR if you want to install
+the toolkit outside of your current root filesystem but into an alternative
+path. This is particularly useful when cross-compiling because most likely
+you want to install into a dedicated sandbox or into a mounted root filesystem
+for the target architecture and not into the build hosts root filesystem.
+
+  $ make PREFIX=<path-prefix-for-package> DESTDIR=<alternative-rootfs> install
 
 Thanks for maintaining netsniff-ng in your distribution. Further questions will
 be answered on the public mailing list.

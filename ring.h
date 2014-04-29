@@ -20,7 +20,6 @@
 #include <sys/ioctl.h>
 #include <string.h>
 #include <poll.h>
-#include <sys/poll.h>
 
 #include "built_in.h"
 #include "die.h"
@@ -101,7 +100,7 @@ static inline void ring_verify_layout(struct ring *ring)
 {
 	bug_on(ring->layout.tp_block_size  < ring->layout.tp_frame_size);
 	bug_on((ring->layout.tp_block_size % ring->layout.tp_frame_size) != 0);
-	bug_on((ring->layout.tp_block_size % getpagesize()) != 0);
+	bug_on((ring->layout.tp_block_size % RUNTIME_PAGE_SIZE) != 0);
 }
 
 static inline void tpacket_hdr_clone(struct tpacket2_hdr *thdrd,
@@ -128,18 +127,6 @@ static inline void __set_sockopt_tpacket(int sock, int val)
 		panic("Cannot set tpacketv2!\n");
 }
 
-static inline int __get_sockopt_tpacket(int sock)
-{
-	int val, ret;
-	socklen_t len = sizeof(val);
-
-	ret = getsockopt(sock, SOL_PACKET, PACKET_VERSION, &val, &len);
-	if (ret)
-		panic("Cannot get tpacket version!\n");
-
-	return val;
-}
-
 static inline void set_sockopt_tpacket_v2(int sock)
 {
 	__set_sockopt_tpacket(sock, TPACKET_V2);
@@ -154,7 +141,14 @@ static inline void set_sockopt_tpacket_v3(int sock)
 
 static inline int get_sockopt_tpacket(int sock)
 {
-	return __get_sockopt_tpacket(sock);
+	int val, ret;
+	socklen_t len = sizeof(val);
+
+	ret = getsockopt(sock, SOL_PACKET, PACKET_VERSION, &val, &len);
+	if (ret)
+		panic("Cannot get tpacket version!\n");
+
+	return val;
 }
 
 extern void mmap_ring_generic(int sock, struct ring *ring);

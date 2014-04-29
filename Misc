@@ -21,7 +21,7 @@ announcement:
 	$(Q)echo -e "   *** BLURB HERE (general bits, optional) ***\n\n---\n" > .MAIL_MSG
 	$(Q)echo -e "netsniff-ng $(VERSION_SHORT) has been released to the public (http://netsniff-ng.org/).\n" >> .MAIL_MSG
 	$(Q)echo -e "It can be fetched via Git:\n" >> .MAIL_MSG
-	$(Q)echo -e "   git clone git://github.com/borkmann/netsniff-ng.git" >> .MAIL_MSG
+	$(Q)echo -e "   git clone git://github.com/netsniff-ng/netsniff-ng.git" >> .MAIL_MSG
 	$(Q)echo -e "   git checkout v$(VERSION_SHORT)\n" >> .MAIL_MSG
 	$(Q)echo -e "Or via HTTP:\n" >> .MAIL_MSG
 	$(Q)echo -e "   wget http://pub.netsniff-ng.org/netsniff-ng/netsniff-ng-$(VERSION_SHORT).tar.gz\n" >> .MAIL_MSG
@@ -104,7 +104,8 @@ help:
 	$(Q)echo " DEBUG=1 / DISTRO=1           - Enable debugging / Build for distros"
 	$(Q)echo " HARDENING=1                  - Enable GCC hardening of executables"
 	$(Q)echo " PREFIX=/path                 - Install path prefix"
-	$(Q)echo " CROSS_COMPILE=/path-prefix   - Kernel-like cross-compiling prefix"
+	$(Q)echo " DESTDIR=/path                - Alternative install destination path"
+	$(Q)echo " CROSS_COMPILE=arch-prefix    - Kernel-like cross-compiling architecture prefix"
 	$(Q)echo " CROSS_LD_LIBRARY_PATH=/path  - Library search path for cross-compiling"
 	$(Q)echo " CC=cgcc                      - Use sparse compiler wrapper"
 	$(Q)echo " CFLAGS=\"-O2 -Wall ...\"       - Overwrite CFLAGS for compilation"
