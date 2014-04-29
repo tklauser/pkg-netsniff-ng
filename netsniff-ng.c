@@ -113,6 +113,8 @@ static void signal_handler(int number)
 {
 	switch (number) {
 	case SIGINT:
+	case SIGQUIT:
+	case SIGTERM:
 		sigint = 1;
 	case SIGHUP:
 	default:
@@ -166,7 +168,6 @@ static inline bool dump_to_pcap(struct ctx *ctx)
 
 static void pcap_to_xmit(struct ctx *ctx)
 {
-	__label__ out;
 	uint8_t *out = NULL;
 	int irq, ifindex, fd = 0, ret;
 	unsigned int size, it = 0;
@@ -279,7 +280,7 @@ static void pcap_to_xmit(struct ctx *ctx)
 				 !bpf_run_filter(&bpf_ops, out,
 						 pcap_get_length(&phdr, ctx->magic)));
 
-			pcap_pkthdr_to_tpacket_hdr(&phdr, ctx->magic, &hdr->tp_h);
+			pcap_pkthdr_to_tpacket_hdr(&phdr, ctx->magic, &hdr->tp_h, NULL);
 
 			ctx->tx_bytes += hdr->tp_h.tp_len;;
 			ctx->tx_packets++;
@@ -307,8 +308,7 @@ static void pcap_to_xmit(struct ctx *ctx)
 		}
 	}
 
-	out:
-
+out:
 	bug_on(gettimeofday(&end, NULL));
 	timersub(&end, &start, &diff);
 
@@ -409,8 +409,6 @@ static void receive_to_xmit(struct ctx *ctx)
 
 	while (likely(sigint == 0)) {
 		while (user_may_pull_from_rx(rx_ring.frames[it_in].iov_base)) {
-			__label__ next;
-
 			hdr_in = rx_ring.frames[it_in].iov_base;
 			in = ((uint8_t *) hdr_in) + hdr_in->tp_h.tp_mac;
 
@@ -461,8 +459,7 @@ static void receive_to_xmit(struct ctx *ctx)
 				}
 			}
 
-			next:
-
+next:
 			kernel_may_pull_from_rx(&hdr_in->tp_h);
 
 			it_in++;
@@ -480,8 +477,7 @@ static void receive_to_xmit(struct ctx *ctx)
 		}
 	}
 
-	out:
-
+out:
 	timer_purge();
 
 	sock_rx_net_stats(rx_sock, 0);
@@ -535,7 +531,6 @@ static void translate_pcap_to_txf(int fdo, uint8_t *out, size_t len)
 
 static void read_pcap(struct ctx *ctx)
 {
-	__label__ out;
 	uint8_t *out;
 	int ret, fd, fdo = 0;
 	unsigned long trunced = 0;
@@ -578,7 +573,7 @@ static void read_pcap(struct ctx *ctx)
 
 	dissector_init_all(ctx->print_mode);
 
-	out_len = round_up(1024 * 1024, PAGE_SIZE);
+	out_len = round_up(1024 * 1024, RUNTIME_PAGE_SIZE);
 	out = xmalloc_aligned(out_len, CO_CACHE_LINE_SIZE);
 
 	if (ctx->device_out) {
@@ -618,7 +613,7 @@ static void read_pcap(struct ctx *ctx)
 			 !bpf_run_filter(&bpf_ops, out,
 					 pcap_get_length(&phdr, ctx->magic)));
 
-		pcap_pkthdr_to_tpacket_hdr(&phdr, ctx->magic, &fm.tp_h);
+		pcap_pkthdr_to_tpacket_hdr(&phdr, ctx->magic, &fm.tp_h, &fm.s_ll);
 
 		ctx->tx_bytes += fm.tp_h.tp_len;
 		ctx->tx_packets++;
@@ -828,7 +823,6 @@ static void walk_t3_block(struct block_desc *pbd, struct ctx *ctx,
 	sll = (void *) ((uint8_t *) hdr + TPACKET_ALIGN(sizeof(*hdr)));
 
 	for (i = 0; i < num_pkts && likely(sigint == 0); ++i) {
-		__label__ next;
 		packet = ((uint8_t *) hdr + hdr->tp_mac);
 
 		if (ctx->packet_type != -1)
@@ -850,8 +844,7 @@ static void walk_t3_block(struct block_desc *pbd, struct ctx *ctx,
 
 		dissector_entry_point(packet, hdr->tp_snaplen, ctx->link_type,
 				      ctx->print_mode);
-		next:
-
+next:
                 hdr = (void *) ((uint8_t *) hdr + hdr->tp_next_offset);
 		sll = (void *) ((uint8_t *) hdr + TPACKET_ALIGN(sizeof(*hdr)));
 
@@ -1372,6 +1365,8 @@ int main(int argc, char **argv)
 		ctx.device_in = xstrdup("any");
 
 	register_signal(SIGINT, signal_handler);
+	register_signal(SIGQUIT, signal_handler);
+	register_signal(SIGTERM, signal_handler);
 	register_signal(SIGHUP, signal_handler);
 
 	tprintf_init();

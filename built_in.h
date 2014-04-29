@@ -178,9 +178,9 @@ typedef uint8_t		u8;
 # define bug()			assert(0)
 #endif
 
-#define PAGE_SIZE		(getpagesize())
-#define PAGE_MASK		(~(PAGE_SIZE - 1))
-#define PAGE_ALIGN(addr)	(((addr) + PAGE_SIZE - 1) & PAGE_MASK)
+#define RUNTIME_PAGE_SIZE	(sysconf(_SC_PAGE_SIZE))
+#define PAGE_MASK		(~(RUNTIME_PAGE_SIZE - 1))
+#define PAGE_ALIGN(addr)	(((addr) + RUNTIME_PAGE_SIZE - 1) & PAGE_MASK)
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 static inline uint64_t htonll(uint64_t x)
@@ -396,6 +396,18 @@ static inline u64 cpu_to_le64(u64 val)
 
 #ifndef ARPHRD_NETLINK
 # define ARPHRD_NETLINK			824
+#endif
+
+#ifndef PACKET_USER
+# define PACKET_USER			6
+#endif
+
+#ifndef PACKET_KERNEL
+# define PACKET_KERNEL			7
+#endif
+
+#ifndef DEFFILEMODE
+# define DEFFILEMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH) /* 0666 */
 #endif
 
 #endif /* BUILT_IN_H */

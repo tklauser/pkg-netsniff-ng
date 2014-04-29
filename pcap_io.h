@@ -22,6 +22,7 @@
 #include "die.h"
 #include "dev.h"
 #include "ioops.h"
+#include "linktype.h"
 
 #define TCPDUMP_MAGIC				0xa1b2c3d4
 #define ORIGINAL_TCPDUMP_MAGIC			TCPDUMP_MAGIC
@@ -36,29 +37,6 @@
 #define PCAP_TSOURCE_SOFTWARE			1
 #define PCAP_TSOURCE_SYS_HARDWARE		2
 #define PCAP_TSOURCE_RAW_HARDWARE		3
-
-#define LINKTYPE_NULL				0
-#define LINKTYPE_EN10MB				1
-#define LINKTYPE_EN3MB				2
-#define LINKTYPE_AX25				3
-#define LINKTYPE_PRONET				4
-#define LINKTYPE_CHAOS				5
-#define LINKTYPE_IEEE802			6
-#define LINKTYPE_SLIP				8
-#define LINKTYPE_PPP				9
-#define LINKTYPE_FDDI				10
-#define LINKTYPE_ATM_CLIP			19
-#define LINKTYPE_C_HDLC				104
-#define LINKTYPE_IEEE802_11			105
-#define LINKTYPE_FRELAY				107
-#define LINKTYPE_ECONET				115
-#define LINKTYPE_ARCNET_LINUX			129
-#define LINKTYPE_LINUX_IRDA			144
-#define LINKTYPE_CAN20B				190
-#define LINKTYPE_IEEE802_15_4_LINUX		191
-#define LINKTYPE_INFINIBAND			247
-#define LINKTYPE_NETLINK			253
-#define LINKTYPE_MAX				254
 
 struct pcap_filehdr {
 	uint32_t magic;
@@ -450,7 +428,8 @@ static inline void tpacket3_hdr_to_pcap_pkthdr(struct tpacket3_hdr *thdr,
 
 static inline void pcap_pkthdr_to_tpacket_hdr(pcap_pkthdr_t *phdr,
 					      enum pcap_type type,
-					      struct tpacket2_hdr *thdr)
+					      struct tpacket2_hdr *thdr,
+					      struct sockaddr_ll *sll)
 {
 	switch (type) {
 	case DEFAULT:
@@ -486,6 +465,11 @@ static inline void pcap_pkthdr_to_tpacket_hdr(pcap_pkthdr_t *phdr,
 		thdr->tp_nsec = phdr->ppk.ts.tv_usec * 1000;
 		thdr->tp_snaplen = phdr->ppk.caplen;
 		thdr->tp_len = phdr->ppk.len;
+		if (sll) {
+			sll->sll_ifindex = phdr->ppk.ifindex;
+			sll->sll_protocol = phdr->ppk.protocol;
+			sll->sll_pkttype = phdr->ppk.pkttype;
+		}
 		break;
 
 	case KUZNETZOV_SWAPPED:
@@ -493,6 +477,11 @@ static inline void pcap_pkthdr_to_tpacket_hdr(pcap_pkthdr_t *phdr,
 		thdr->tp_nsec = ___constant_swab32(phdr->ppk.ts.tv_usec) * 1000;
 		thdr->tp_snaplen = ___constant_swab32(phdr->ppk.caplen);
 		thdr->tp_len = ___constant_swab32(phdr->ppk.len);
+		if (sll) {
+			sll->sll_ifindex = ___constant_swab32(phdr->ppk.ifindex);
+			sll->sll_protocol = ___constant_swab16(phdr->ppk.protocol);
+			sll->sll_pkttype = phdr->ppk.pkttype;
+		}
 		break;
 
 	case BORKMANN:
@@ -500,6 +489,12 @@ static inline void pcap_pkthdr_to_tpacket_hdr(pcap_pkthdr_t *phdr,
 		thdr->tp_nsec = phdr->ppb.ts.tv_nsec;
 		thdr->tp_snaplen = phdr->ppb.caplen;
 		thdr->tp_len = phdr->ppb.len;
+		if (sll) {
+			sll->sll_ifindex = phdr->ppb.ifindex;
+			sll->sll_protocol = phdr->ppb.protocol;
+			sll->sll_hatype = phdr->ppb.hatype;
+			sll->sll_pkttype = phdr->ppb.pkttype;
+		}
 		break;
 
 	case BORKMANN_SWAPPED:
@@ -507,6 +502,12 @@ static inline void pcap_pkthdr_to_tpacket_hdr(pcap_pkthdr_t *phdr,
 		thdr->tp_nsec = ___constant_swab32(phdr->ppb.ts.tv_nsec);
 		thdr->tp_snaplen = ___constant_swab32(phdr->ppb.caplen);
 		thdr->tp_len = ___constant_swab32(phdr->ppb.len);
+		if (sll) {
+			sll->sll_ifindex = ___constant_swab16(phdr->ppb.ifindex);
+			sll->sll_protocol = ___constant_swab16(phdr->ppb.protocol);
+			sll->sll_hatype = phdr->ppb.hatype;
+			sll->sll_pkttype = phdr->ppb.pkttype;
+		}
 		break;
 
 	default:
@@ -660,27 +661,22 @@ static const bool pcap_supported_linktypes[LINKTYPE_MAX] __maybe_unused = {
 static inline void pcap_validate_header(const struct pcap_filehdr *hdr)
 {
 	bool good = false;
-	uint32_t linktype_swab = bswap_32(hdr->linktype);
+	uint32_t linktype;
+
 	pcap_check_magic(hdr->magic);
 
-	if (hdr->linktype < LINKTYPE_MAX) {
-		if (pcap_supported_linktypes[hdr->linktype])
-			good = true;
-	}
-
-	if (linktype_swab < LINKTYPE_MAX) {
-		if (pcap_supported_linktypes[linktype_swab])
-			good = true;
-	}
+	linktype = pcap_magic_is_swapped(hdr->magic) ? bswap_32(hdr->linktype) : hdr->linktype;
+	if (linktype < LINKTYPE_MAX)
+		good = pcap_supported_linktypes[linktype];
 
 	if (!good)
-		panic("This file has an unsupported pcap link type (%d)!\n", hdr->linktype);
+		panic("This file has an unsupported pcap link type (%d)!\n", linktype);
 	if (unlikely(hdr->version_major != PCAP_VERSION_MAJOR) &&
 		     ___constant_swab16(hdr->version_major) != PCAP_VERSION_MAJOR)
-		panic("This file has not a valid pcap header\n");
+		panic("This file has an invalid pcap major version (must be %d)\n", PCAP_VERSION_MAJOR);
 	if (unlikely(hdr->version_minor != PCAP_VERSION_MINOR) &&
 		     ___constant_swab16(hdr->version_minor) != PCAP_VERSION_MINOR)
-		panic("This file has not a valid pcap header\n");
+		panic("This file has an invalid pcap minor version (must be %d)\n", PCAP_VERSION_MINOR);
 }
 
 static int pcap_generic_pull_fhdr(int fd, uint32_t *magic,
