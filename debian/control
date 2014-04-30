@@ -17,7 +17,7 @@ Build-Depends: bison,
                libpcap-dev,
                liburcu-dev,
                zlib1g-dev
-Maintainer: Daniel Borkmann <daniel.borkmann@alumni.ethz.ch>,
+Maintainer: Daniel Borkmann <daniel.borkmann@alumni.ethz.ch>
 Uploaders: Kartik Mistry <kartik@debian.org>,
            Tobias Klauser <tklauser@distanz.ch>
 Standards-Version: 3.9.5
