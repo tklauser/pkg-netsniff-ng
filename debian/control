@@ -17,8 +17,9 @@ Build-Depends: bison,
                libpcap-dev,
                liburcu-dev,
                zlib1g-dev
-Maintainer: Daniel Borkmann <daniel.borkmann@alumni.ethz.ch>
-Uploaders: Kartik Mistry <kartik@debian.org>
+Maintainer: Kartik Mistry <kartik@debian.org>
+Uploaders: Daniel Borkmann <daniel.borkmann@alumni.ethz.ch>,
+           Tobias Klauser <tklauser@distanz.ch>
 Standards-Version: 3.9.5
 Homepage: http://www.netsniff-ng.org/
 Vcs-Git: git://anonscm.debian.org/collab-maint/netsniff-ng.git
@@ -28,7 +29,7 @@ Package: netsniff-ng
 Architecture: amd64 i386 ia64 mips powerpc sparc
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Recommends: ntp
-Description: packet sniffing beast
+Description: Linux network packet sniffer toolkit
  netsniff-ng is a high performance Linux network sniffer for packet inspection.
  It can be used for protocol analysis, reverse engineering or network
  debugging. The gain of performance is reached by 'zero-copy' mechanisms, so
@@ -37,9 +38,10 @@ Description: packet sniffing beast
  netsniff-ng toolkit currently consists of the following utilities:
  .
   * netsniff-ng: the zero-copy sniffer, pcap capturer and replayer itself.
-  * trafgen: a high performance zero-copy network packet generator.
-  * ifpps: a top-like kernel networking and system statistics tool.
-  * curvetun: a lightweight curve25519-based multiuser IP tunnel.
   * ashunt: an autonomous system trace route and ISP testing utility.
-  * flowtop: a top-like netfilter connection tracking tool.
   * bpfc: a tiny Berkeley Packet Filter compiler supporting Linux extensions.
+  * curvetun: a lightweight curve25519-based multiuser IP tunnel.
+  * flowtop: a top-like netfilter connection tracking tool.
+  * ifpps: a top-like kernel networking and system statistics tool.
+  * mausezahn: a fast versatile packet generator with Cisco-cli.
+  * trafgen: a high performance zero-copy network packet generator.
