@@ -4,9 +4,9 @@ netsniff-ng (0.5.8-1) unstable; urgency=low
     + Dropped all patches. Merged upstream.
   * Uploaded to unstable.
   * debian/control:
-    + Updated short description.
+    + Updated short description (Closes: #741997)
     + Added mausezahn in long description.
-    + Added Tobias Klauser as Uploaders. Set myself as Maintainer.
+    + Added Tobias Klauser as Uploaders.
   * debian/rules:
     + Fixed installation as per upstream changes.
     + Removed unused dh_installexamples
