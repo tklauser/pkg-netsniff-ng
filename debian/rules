@@ -27,7 +27,7 @@ build-arch: build-stamp
 build-indep: build-stamp
 build-stamp: configure-stamp
 	dh_testdir
-	$(MAKE)
+	$(MAKE) PREFIX=/usr ETCDIR=/etc
 	touch $@
 
 clean:
