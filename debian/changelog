@@ -1,14 +1,17 @@
 netsniff-ng (0.5.8-1) unstable; urgency=low
 
   * New upstream release:
-    + Dropped patch, manpage_fix. Merged upstream.
+    + Dropped all patches. Merged upstream.
   * Uploaded to unstable.
   * debian/control:
     + Updated short description.
     + Added mausezahn in long description.
     + Added Tobias Klauser as Uploaders. Set myself as Maintainer.
+  * debian/rules:
+    + Fixed installation as per upstream changes.
+    + Removed unused dh_installexamples
 
- -- Kartik Mistry <kartik@debian.org>  Tue, 29 Apr 2014 15:49:20 +0530
+ -- Kartik Mistry <kartik@debian.org>  Wed, 30 Apr 2014 21:12:59 +0530
 
 netsniff-ng (0.5.8~rc5-2) experimental; urgency=low
 

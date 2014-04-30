@@ -40,7 +40,7 @@ install: build
 	dh_testroot
 	dh_prep
 	dh_installdirs
-	$(MAKE) PREFIX=$(CURDIR)/debian/netsniff-ng install
+	$(MAKE) PREFIX=/usr ETCDIR=/etc DESTDIR=$(CURDIR)/debian/netsniff-ng install
 
 # Build architecture-independent files here.
 binary-indep: build install
