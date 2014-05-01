@@ -38,7 +38,6 @@ Description: Linux network packet sniffer toolkit
  netsniff-ng toolkit currently consists of the following utilities:
  .
   * netsniff-ng: the zero-copy sniffer, pcap capturer and replayer itself.
-  * ashunt: an autonomous system trace route and ISP testing utility.
   * bpfc: a tiny Berkeley Packet Filter compiler supporting Linux extensions.
   * curvetun: a lightweight curve25519-based multiuser IP tunnel.
   * flowtop: a top-like netfilter connection tracking tool.

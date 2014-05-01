@@ -1,3 +1,11 @@
+netsniff-ng (0.5.8-2) unstable; urgency=low
+
+  * debian/control:
+    + Removed ashunt from description. It isn't included in package now.
+      (Closes: #703855)
+
+ -- Kartik Mistry <kartik@debian.org>  Thu, 01 May 2014 10:48:41 +0530
+
 netsniff-ng (0.5.8-1) unstable; urgency=low
 
   * New upstream release:
