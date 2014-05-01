@@ -2,8 +2,9 @@ netsniff-ng (0.5.8-2) unstable; urgency=low
 
   * debian/control:
     + Replaced ashunt with astraceroute in long description.
+  * Updated debian/watch file.
 
- -- Kartik Mistry <kartik@debian.org>  Thu, 01 May 2014 10:48:41 +0530
+ -- Kartik Mistry <kartik@debian.org>  Thu, 01 May 2014 14:54:51 +0530
 
 netsniff-ng (0.5.8-1) unstable; urgency=low
 
