@@ -1,8 +1,9 @@
 netsniff-ng (0.5.8-2) unstable; urgency=low
 
   * debian/control:
-    + Removed ashunt from description. It isn't included in package now.
+    + Removed ashunt from long description. It isn't included in package now.
       (Closes: #703855)
+    + Added astraceroute in long description.
 
  -- Kartik Mistry <kartik@debian.org>  Thu, 01 May 2014 10:48:41 +0530
 
