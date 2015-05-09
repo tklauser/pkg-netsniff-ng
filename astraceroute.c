@@ -40,11 +40,10 @@
 #include "pkt_buff.h"
 #include "proto.h"
 #include "xmalloc.h"
-#include "ioops.h"
 #include "csum.h"
 #include "sock.h"
 #include "geoip.h"
-#include "ring_rx.h"
+#include "ring.h"
 #include "built_in.h"
 
 struct ctx {
@@ -118,6 +117,13 @@ static const struct option long_options[] = {
 	{NULL, 0, NULL, 0}
 };
 
+static const char *copyright = "Please report bugs to <bugs@netsniff-ng.org>\n"
+	"Copyright (C) 2011-2013 Daniel Borkmann <dborkma@tik.ee.ethz.ch>\n"
+	"Swiss federal institute of technology (ETH Zurich)\n"
+	"License: GNU GPL version 2.0\n"
+	"This is free software: you are free to change and redistribute it.\n"
+	"There is NO WARRANTY, to the extent permitted by law.";
+
 static const struct sock_filter ipv4_icmp_type_11[] = {
 	{ 0x28, 0, 0, 0x0000000c },	/* ldh [12]		*/
 	{ 0x15, 0, 8, 0x00000800 },	/* jneq #0x800, drop	*/
@@ -178,7 +184,7 @@ static void signal_handler(int number)
 
 static void __noreturn help(void)
 {
-	printf("\nastraceroute %s, autonomous system trace route utility\n", VERSION_STRING);
+	printf("astraceroute %s, autonomous system trace route utility\n", VERSION_STRING);
 	puts("http://www.netsniff-ng.org\n\n"
 	     "Usage: astraceroute [options]\n"
 	     "Options:\n"
@@ -227,27 +233,17 @@ static void __noreturn help(void)
 	     "  If the TCP probe did not give any results, then astraceroute will\n"
 	     "  automatically probe for classic ICMP packets! To gather more\n"
 	     "  information about astraceroute's fetched AS numbers, see e.g.\n"
-	     "  http://bgp.he.net/AS<number>!\n\n"
-	     "Please report bugs to <bugs@netsniff-ng.org>\n"
-	     "Copyright (C) 2011-2013 Daniel Borkmann <dborkma@tik.ee.ethz.ch>\n"
-	     "Swiss federal institute of technology (ETH Zurich)\n"
-	     "License: GNU GPL version 2.0\n"
-	     "This is free software: you are free to change and redistribute it.\n"
-	     "There is NO WARRANTY, to the extent permitted by law.\n");
+	     "  http://bgp.he.net/AS<number>!\n");
+	puts(copyright);
 	die();
 }
 
 static void __noreturn version(void)
 {
-	printf("\nastraceroute %s, Git id: %s\n", VERSION_LONG, GITVERSION);
+	printf("astraceroute %s, Git id: %s\n", VERSION_LONG, GITVERSION);
 	puts("autonomous system trace route utility\n"
-	     "http://www.netsniff-ng.org\n\n"
-	     "Please report bugs to <bugs@netsniff-ng.org>\n"
-	     "Copyright (C) 2011-2013 Daniel Borkmann <dborkma@tik.ee.ethz.ch>\n"
-	     "Swiss federal institute of technology (ETH Zurich)\n"
-	     "License: GNU GPL version 2.0\n"
-	     "This is free software: you are free to change and redistribute it.\n"
-	     "There is NO WARRANTY, to the extent permitted by law.\n");
+	     "http://www.netsniff-ng.org\n");
+	puts(copyright);
 	die();
 }
 
@@ -469,9 +465,9 @@ static void handle_ipv4(uint8_t *packet, size_t len __maybe_unused,
 	getnameinfo((struct sockaddr *) &sd, sizeof(sd),
 		    hbuff, sizeof(hbuff), NULL, 0, NI_NUMERICHOST);
 
-	as = geoip4_as_name(sd);
-	country = geoip4_country_name(sd);
-	city = geoip4_city_name(sd);
+	as = geoip4_as_name(&sd);
+	country = geoip4_country_name(&sd);
+	city = geoip4_city_name(&sd);
 
 	if (dns_resolv) {
 		hent = gethostbyaddr(&sd.sin_addr, sizeof(sd.sin_addr), PF_INET);
@@ -490,7 +486,7 @@ static void handle_ipv4(uint8_t *packet, size_t len __maybe_unused,
 			printf(", %s", city);
 	}
 	if (latitude)
-		printf(" (%f/%f)", geoip4_latitude(sd), geoip4_longitude(sd));
+		printf(" (%f/%f)", geoip4_latitude(&sd), geoip4_longitude(&sd));
 }
 
 static int check_ipv6(uint8_t *packet, size_t len, int ttl __maybe_unused,
@@ -536,9 +532,9 @@ static void handle_ipv6(uint8_t *packet, size_t len __maybe_unused,
 	getnameinfo((struct sockaddr *) &sd, sizeof(sd),
 		    hbuff, sizeof(hbuff), NULL, 0, NI_NUMERICHOST);
 
-	as = geoip6_as_name(sd);
-	country = geoip6_country_name(sd);
-	city = geoip6_city_name(sd);
+	as = geoip6_as_name(&sd);
+	country = geoip6_country_name(&sd);
+	city = geoip6_city_name(&sd);
 
 	if (dns_resolv) {
 		hent = gethostbyaddr(&sd.sin6_addr, sizeof(sd.sin6_addr), PF_INET6);
@@ -557,7 +553,7 @@ static void handle_ipv6(uint8_t *packet, size_t len __maybe_unused,
 			printf(", %s", city);
 	}
 	if (latitude)
-		printf(" (%f/%f)", geoip6_latitude(sd), geoip6_longitude(sd));
+		printf(" (%f/%f)", geoip6_latitude(&sd), geoip6_longitude(&sd));
 }
 
 static void show_trace_info(struct ctx *ctx, const struct sockaddr_storage *ss,
@@ -785,7 +781,7 @@ static int __process_time(struct ctx *ctx, int fd, int fd_cap, int ttl,
 		return -EIO;
 	}
 
-	tmp = xmalloc(sizeof(struct timeval) * good);
+	tmp = xcalloc(good, sizeof(struct timeval));
 	for (i = j = 0; i < array_size(probes); ++i) {
 		if (probes[i].tv_sec == 0 && probes[i].tv_usec == 0)
 			continue;
@@ -899,7 +895,7 @@ static int main_trace(struct ctx *ctx)
 	inject_filter(ctx, fd_cap);
 
 	ifindex = device_ifindex(ctx->dev);
-	bind_rx_ring(fd_cap, &dummy_ring, ifindex);
+	bind_ring_generic(fd_cap, &dummy_ring, ifindex, false);
 
 	if (ctx->totlen < af_ops[ctx->proto].min_len_tcp) {
 		ctx->totlen = af_ops[ctx->proto].min_len_tcp;

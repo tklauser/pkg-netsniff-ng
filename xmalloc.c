@@ -1,6 +1,7 @@
 /*
  * netsniff-ng - the packet sniffing beast
  * Copyright 2009, 2010, 2011, 2012 Daniel Borkmann.
+ * Copyright 2014, 2015 Tobias Klauser
  * Subject to the GPL, version 2.
  */
 
@@ -30,6 +31,21 @@ void *xmalloc(size_t size)
 	if (unlikely(ptr == NULL))
 		panic("xmalloc: out of memory (allocating %zu bytes)\n",
 		      size);
+
+	return ptr;
+}
+
+void *xcalloc(size_t nmemb, size_t size)
+{
+	void *ptr;
+
+	if (unlikely(nmemb == 0 || size == 0))
+		panic("xcalloc: zero size\n");
+
+	ptr = calloc(nmemb, size);
+	if (unlikely(ptr == NULL))
+		panic("xcalloc: out of memory (allocating %zu members of "
+		      "%zu bytes)\n", nmemb, size);
 
 	return ptr;
 }
@@ -83,24 +99,16 @@ void *xmemdupz(const void *data, size_t len)
 	return memcpy(xmallocz(len), data, len);
 }
 
-void *xrealloc(void *ptr, size_t nmemb, size_t size)
+void *xrealloc(void *ptr, size_t size)
 {
 	void *new_ptr;
-	size_t new_size = nmemb * size;
 
-	if (unlikely(new_size == 0))
+	if (unlikely(size == 0))
 		panic("xrealloc: zero size\n");
-	if (unlikely(((size_t) ~0) / nmemb < size))
-		panic("xrealloc: nmemb * size > SIZE_T_MAX\n");
 
-	if (ptr == NULL)
-		new_ptr = malloc(new_size);
-	else
-		new_ptr = realloc(ptr, new_size);
-
+	new_ptr = realloc(ptr, size);
 	if (unlikely(new_ptr == NULL))
-		panic("xrealloc: out of memory (new_size %zu bytes)\n",
-		      new_size);
+		panic("xrealloc: out of memory (allocating %zu bytes)\n", size);
 
 	return new_ptr;
 }

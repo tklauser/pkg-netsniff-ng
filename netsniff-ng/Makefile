@@ -1,5 +1,5 @@
-netsniff-ng-libs =	$(shell pkg-config --libs libnl-3.0) \
-			$(shell pkg-config --libs libnl-genl-3.0) \
+netsniff-ng-libs =	$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --libs libnl-3.0) \
+			$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --libs libnl-genl-3.0) \
 			-lpthread
 
 ifeq ($(CONFIG_LIBPCAP), 1)
@@ -13,6 +13,8 @@ endif
 netsniff-ng-objs =	dissector.o \
 			dissector_eth.o \
 			dissector_80211.o \
+			dissector_netlink.o \
+			lookup.o \
 			proto_arp.o \
 			proto_ethernet.o \
 			proto_icmpv4.o \
@@ -30,6 +32,7 @@ netsniff-ng-objs =	dissector.o \
 			proto_ipv6_no_nxt_hdr.o \
 			proto_ipv6_routing.o \
 			proto_lldp.o \
+			proto_nlmsg.o \
 			proto_none.o \
 			proto_tcp.o \
 			proto_udp.o \
@@ -60,6 +63,7 @@ netsniff-ng-objs =	dissector.o \
 			tprintf.o \
 			timer.o \
 			mac80211.o \
+			die.o \
 			netsniff-ng.o
 
 ifeq ($(CONFIG_LIBPCAP), 1)
@@ -72,9 +76,9 @@ ifeq ($(CONFIG_HWTSTAMP), 1)
 netsniff-ng-objs +=	tstamping.o
 endif
 
-netsniff-ng-eflags = $(shell pkg-config --cflags libnl-3.0) \
-		     $(shell pkg-config --cflags libnl-genl-3.0) \
-		     -DHAVE_DISSECTOR_PROTOS -DNEED_TCPDUMP_LIKE_FILTER
+netsniff-ng-eflags = $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --cflags libnl-3.0) \
+		     $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --cflags libnl-genl-3.0) \
+		     -DNEED_TCPDUMP_LIKE_FILTER
 
 netsniff-ng-confs =	ether.conf \
 			tcp.conf \

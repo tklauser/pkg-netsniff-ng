@@ -22,18 +22,18 @@
 #include <sys/fsuid.h>
 #include <urcu.h>
 #include <libgen.h>
+#include <inttypes.h>
 
 #include "die.h"
 #include "xmalloc.h"
 #include "conntrack.h"
-#include "ioops.h"
 #include "config.h"
 #include "str.h"
 #include "sig.h"
+#include "lookup.h"
 #include "geoip.h"
 #include "built_in.h"
 #include "locking.h"
-#include "dissector_eth.h"
 #include "pkt_buff.h"
 #include "screen.h"
 
@@ -51,7 +51,8 @@ struct flow_entry {
 	char rev_dns_src[256], rev_dns_dst[256];
 	char cmdline[256];
 	struct flow_entry *next;
-	int procnum, inode;
+	int inode;
+	unsigned int procnum;
 };
 
 struct flow_list {
@@ -79,6 +80,7 @@ struct flow_list {
 static volatile sig_atomic_t sigint = 0;
 static int what = INCLUDE_IPV4 | INCLUDE_IPV6 | INCLUDE_TCP, show_src = 0;
 static struct flow_list flow_list;
+static struct condlock collector_ready;
 
 static const char *short_options = "vhTUsDIS46u";
 static const struct option long_options[] = {
@@ -95,6 +97,14 @@ static const struct option long_options[] = {
 	{"help",	no_argument,		NULL, 'h'},
 	{NULL, 0, NULL, 0}
 };
+
+static const char *copyright = "Please report bugs to <bugs@netsniff-ng.org>\n"
+	"Copyright (C) 2011-2013 Daniel Borkmann <dborkma@tik.ee.ethz.ch>\n"
+	"Copyright (C) 2011-2012 Emmanuel Roullit <emmanuel.roullit@gmail.com>\n"
+	"Swiss federal institute of technology (ETH Zurich)\n"
+	"License: GNU GPL version 2.0\n"
+	"This is free software: you are free to change and redistribute it.\n"
+	"There is NO WARRANTY, to the extent permitted by law.";
 
 static const char *const l3proto2str[AF_MAX] = {
 	[AF_INET]			= "ipv4",
@@ -226,7 +236,7 @@ static void flow_entry_get_extended(struct flow_entry *n);
 
 static void help(void)
 {
-	printf("\nflowtop %s, top-like netfilter TCP/UDP/SCTP/.. flow tracking\n",
+	printf("flowtop %s, top-like netfilter TCP/UDP/SCTP/.. flow tracking\n",
 	       VERSION_STRING);
 	puts("http://www.netsniff-ng.org\n\n"
 	     "Usage: flowtop [options]\n"
@@ -248,29 +258,17 @@ static void help(void)
 	     "Note:\n"
 	     "  If netfilter is not running, you can activate it with e.g.:\n"
 	     "   iptables -A INPUT -p tcp -m state --state ESTABLISHED -j ACCEPT\n"
-	     "   iptables -A OUTPUT -p tcp -m state --state NEW,ESTABLISHED -j ACCEPT\n\n"
-	     "Please report bugs to <bugs@netsniff-ng.org>\n"
-	     "Copyright (C) 2011-2013 Daniel Borkmann <dborkma@tik.ee.ethz.ch>\n"
-	     "Copyright (C) 2011-2012 Emmanuel Roullit <emmanuel.roullit@gmail.com>\n"
-	     "Swiss federal institute of technology (ETH Zurich)\n"
-	     "License: GNU GPL version 2.0\n"
-	     "This is free software: you are free to change and redistribute it.\n"
-	     "There is NO WARRANTY, to the extent permitted by law.\n");
+	     "   iptables -A OUTPUT -p tcp -m state --state NEW,ESTABLISHED -j ACCEPT\n");
+	puts(copyright);
 	die();
 }
 
 static void version(void)
 {
-	printf("\nflowtop %s, Git id: %s\n", VERSION_LONG, GITVERSION);
+	printf("flowtop %s, Git id: %s\n", VERSION_LONG, GITVERSION);
 	puts("top-like netfilter TCP/UDP/SCTP/.. flow tracking\n"
-	     "http://www.netsniff-ng.org\n\n"
-	     "Please report bugs to <bugs@netsniff-ng.org>\n"
-	     "Copyright (C) 2011-2013 Daniel Borkmann <dborkma@tik.ee.ethz.ch>\n"
-	     "Copyright (C) 2011-2012 Emmanuel Roullit <emmanuel.roullit@gmail.com>\n"
-	     "Swiss federal institute of technology (ETH Zurich)\n"
-	     "License: GNU GPL version 2.0\n"
-	     "This is free software: you are free to change and redistribute it.\n"
-	     "There is NO WARRANTY, to the extent permitted by law.\n");
+	     "http://www.netsniff-ng.org\n");
+	puts(copyright);
 	die();
 }
 
@@ -392,15 +390,15 @@ static void flow_list_destroy(struct flow_list *fl)
 	spinlock_destroy(&fl->lock);
 }
 
-static int walk_process(char *process, struct flow_entry *n)
+static int walk_process(unsigned int pid, struct flow_entry *n)
 {
 	int ret;
 	DIR *dir;
 	struct dirent *ent;
 	char path[1024];
 
-	if (snprintf(path, sizeof(path), "/proc/%s/fd", process) == -1)
-		panic("giant process name! %s\n", process);
+	if (snprintf(path, sizeof(path), "/proc/%u/fd", pid) == -1)
+		panic("giant process name! %u\n", pid);
 
 	dir = opendir(path);
 	if (!dir)
@@ -409,8 +407,8 @@ static int walk_process(char *process, struct flow_entry *n)
 	while ((ent = readdir(dir))) {
 		struct stat statbuf;
 
-		if (snprintf(path, sizeof(path), "/proc/%s/fd/%s",
-			     process, ent->d_name) < 0)
+		if (snprintf(path, sizeof(path), "/proc/%u/fd/%s",
+			     pid, ent->d_name) < 0)
 			continue;
 
 		if (stat(path, &statbuf) < 0)
@@ -419,14 +417,14 @@ static int walk_process(char *process, struct flow_entry *n)
 		if (S_ISSOCK(statbuf.st_mode) && (ino_t) n->inode == statbuf.st_ino) {
 			memset(n->cmdline, 0, sizeof(n->cmdline));
 
-            		snprintf(path, sizeof(path), "/proc/%s/exe", process);
+			snprintf(path, sizeof(path), "/proc/%u/exe", pid);
 
 			ret = readlink(path, n->cmdline,
 				       sizeof(n->cmdline) - 1);
 			if (ret < 0)
 				panic("readlink error: %s\n", strerror(errno));
 
-			n->procnum = atoi(process);
+			n->procnum = pid;
 			closedir(dir);
 			return 1;
 		}
@@ -450,14 +448,20 @@ static void walk_processes(struct flow_entry *n)
 
 	dir = opendir("/proc");
 	if (!dir)
-		panic("Cannot open /proc!\n");
+		panic("Cannot open /proc: %s\n", strerror(errno));
 
 	while ((ent = readdir(dir))) {
-		if (strspn(ent->d_name, "0123456789") == strlen(ent->d_name)) {
-			ret = walk_process(ent->d_name, n);
-			if (ret > 0)
-				break;
-		}
+		const char *name = ent->d_name;
+		char *end;
+		unsigned int pid = strtoul(name, &end, 10);
+
+		/* not a PID */
+		if (pid == 0 && end == name)
+			continue;
+
+		ret = walk_process(pid, n);
+		if (ret > 0)
+			break;
 	}
 
 	closedir(dir);
@@ -594,12 +598,12 @@ flow_entry_geo_city_lookup_generic(struct flow_entry *n,
 
 	case AF_INET:
 		flow_entry_get_sain4_obj(n, dir, &sa4);
-		city = geoip4_city_name(sa4);
+		city = geoip4_city_name(&sa4);
 		break;
 
 	case AF_INET6:
 		flow_entry_get_sain6_obj(n, dir, &sa6);
-		city = geoip6_city_name(sa6);
+		city = geoip6_city_name(&sa6);
 		break;
 	}
 
@@ -628,12 +632,12 @@ flow_entry_geo_country_lookup_generic(struct flow_entry *n,
 
 	case AF_INET:
 		flow_entry_get_sain4_obj(n, dir, &sa4);
-		country = geoip4_country_name(sa4);
+		country = geoip4_country_name(&sa4);
 		break;
 
 	case AF_INET6:
 		flow_entry_get_sain6_obj(n, dir, &sa6);
-		country = geoip6_country_name(sa6);
+		country = geoip6_country_name(&sa6);
 		break;
 	}
 
@@ -751,7 +755,7 @@ static void presenter_screen_do_line(WINDOW *screen, struct flow_entry *n,
 
 	/* PID, application name */
 	if (n->procnum > 0) {
-		slprintf(tmp, sizeof(tmp), "%s(%u)", basename(n->cmdline),
+		slprintf(tmp, sizeof(tmp), "%s(%d)", basename(n->cmdline),
 			 n->procnum);
 
 		printw("[");
@@ -806,7 +810,7 @@ static void presenter_screen_do_line(WINDOW *screen, struct flow_entry *n,
 
 	/* Number packets, bytes */
 	if (n->counter_pkts > 0 && n->counter_bytes > 0)
-		printw(" (%llu pkts, %llu bytes) ->",
+		printw(" (%"PRIu64" pkts, %"PRIu64" bytes) ->",
 		       n->counter_pkts, n->counter_bytes);
 
 	/* Show source information: reverse DNS, port, country, city */
@@ -815,7 +819,7 @@ static void presenter_screen_do_line(WINDOW *screen, struct flow_entry *n,
 		mvwprintw(screen, ++(*line), 8, "src: %s", n->rev_dns_src);
 		attroff(COLOR_PAIR(1));
 
-		printw(":%u", n->port_src);
+		printw(":%"PRIu16, n->port_src);
 
 		if (n->country_src[0]) {
 			printw(" (");
@@ -838,7 +842,7 @@ static void presenter_screen_do_line(WINDOW *screen, struct flow_entry *n,
 	mvwprintw(screen, ++(*line), 8, "dst: %s", n->rev_dns_dst);
 	attroff(COLOR_PAIR(2));
 
-	printw(":%u", n->port_dst);
+	printw(":%"PRIu16, n->port_dst);
 
 	if (n->country_dst[0]) {
 		printw(" (");
@@ -941,16 +945,11 @@ static void presenter_screen_update(WINDOW *screen, struct flow_list *fl,
 		for (j = 0; j < protocol_state_size[protocols[i]]; j++) {
 			n = rcu_dereference(fl->head);
 			while (n && maxy > 0) {
-				int skip_entry = 0;
-
-				if (n->l4_proto != protocols[i])
-					skip_entry = 1;
-				if (presenter_flow_wrong_state(n, j))
-					skip_entry = 1;
-				if (presenter_get_port(n->port_src,
-						       n->port_dst, 0) == 53)
-					skip_entry = 1;
-				if (skip_entry) {
+				if (n->l4_proto != protocols[i] ||
+				    presenter_flow_wrong_state(n, j) ||
+				    presenter_get_port(n->port_src,
+						       n->port_dst, 0) == 53) {
+					/* skip entry */
 					n = rcu_dereference(n->next);
 					continue;
 				}
@@ -980,7 +979,10 @@ static void presenter(void)
 	int skip_lines = 0;
 	WINDOW *screen;
 
-	dissector_init_ethernet(0);
+	condlock_wait(&collector_ready);
+
+	lookup_init_ports(PORTS_TCP);
+	lookup_init_ports(PORTS_UDP);
 	screen = screen_init(false);
 
 	rcu_register_thread();
@@ -1014,7 +1016,8 @@ static void presenter(void)
 	rcu_unregister_thread();
 
 	screen_end();
-	dissector_cleanup_ethernet();
+	lookup_cleanup_ports(PORTS_UDP);
+	lookup_cleanup_ports(PORTS_TCP);
 }
 
 static int collector_cb(enum nf_conntrack_msg_type type,
@@ -1060,18 +1063,18 @@ static void *collector(void *null __maybe_unused)
 				      NF_NETLINK_CONNTRACK_UPDATE |
 				      NF_NETLINK_CONNTRACK_DESTROY);
 	if (!handle)
-		panic("Cannot create a nfct handle!\n");
+		panic("Cannot create a nfct handle: %s\n", strerror(errno));
 
 	collector_flush(handle, AF_INET);
 	collector_flush(handle, AF_INET6);
 
 	filter = nfct_filter_create();
 	if (!filter)
-		panic("Cannot create a nfct filter!\n");
+		panic("Cannot create a nfct filter: %s\n", strerror(errno));
 
 	ret = nfct_filter_attach(nfct_fd(handle), filter);
 	if (ret < 0)
-		panic("Cannot attach filter to handle!\n");
+		panic("Cannot attach filter to handle: %s\n", strerror(errno));
 
 	if (what & INCLUDE_UDP) {
 		nfct_filter_add_attr_u32(filter, NFCT_FILTER_L4PROTO, IPPROTO_UDP);
@@ -1098,11 +1101,13 @@ static void *collector(void *null __maybe_unused)
 
 	ret = nfct_filter_attach(nfct_fd(handle), filter);
 	if (ret < 0)
-		panic("Cannot attach filter to handle!\n");
+		panic("Cannot attach filter to handle: %s\n", strerror(errno));
 
 	nfct_callback_register(handle, NFCT_T_ALL, collector_cb, NULL);
 	nfct_filter_destroy(filter);
 	flow_list_init(&flow_list);
+
+	condlock_signal(&collector_ready);
 
 	rcu_register_thread();
 
@@ -1179,11 +1184,15 @@ int main(int argc, char **argv)
 
 	init_geoip(1);
 
+	condlock_init(&collector_ready);
+
 	ret = pthread_create(&tid, NULL, collector, NULL);
 	if (ret < 0)
 		panic("Cannot create phthread!\n");
 
 	presenter();
+
+	condlock_destroy(&collector_ready);
 
 	destroy_geoip();
 

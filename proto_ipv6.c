@@ -11,7 +11,6 @@
 #include <arpa/inet.h>     /* for inet_ntop() */
 
 #include "proto.h"
-#include "csum.h"
 #include "dissector_eth.h"
 #include "ipv6.h"
 #include "geoip.h"
@@ -61,21 +60,21 @@ void ipv6(struct pkt_buff *pkt)
 
 	if (geoip_working()) {
 		tprintf("\t[ Geo (");
-		if ((country = geoip6_country_name(sas))) {
+		if ((country = geoip6_country_name(&sas))) {
 			tprintf("%s", country);
-			if ((region = geoip6_region_name(sas)))
+			if ((region = geoip6_region_name(&sas)))
 				tprintf(" / %s", region);
-			if ((city = geoip6_city_name(sas)))
+			if ((city = geoip6_city_name(&sas)))
 				tprintf(" / %s", city);
 		} else {
 			tprintf("local");
 		}
 		tprintf(" => ");
-		if ((country = geoip6_country_name(sad))) {
+		if ((country = geoip6_country_name(&sad))) {
 			tprintf("%s", country);
-			if ((region = geoip6_region_name(sad)))
+			if ((region = geoip6_region_name(&sad)))
 				tprintf(" / %s", region);
-			if ((city = geoip6_city_name(sad)))
+			if ((city = geoip6_city_name(&sad)))
 				tprintf(" / %s", city);
 		} else {
 			tprintf("local");
@@ -83,7 +82,7 @@ void ipv6(struct pkt_buff *pkt)
 		tprintf(") ]\n");
 	}
 
-	pkt_set_proto(pkt, &eth_lay3, ip->nexthdr);
+	pkt_set_dissector(pkt, &eth_lay3, ip->nexthdr);
 }
 
 void ipv6_less(struct pkt_buff *pkt)
@@ -101,7 +100,7 @@ void ipv6_less(struct pkt_buff *pkt)
 	tprintf(" %s/%s Len %u", src_ip, dst_ip,
 		ntohs(ip->payload_len));
 
-	pkt_set_proto(pkt, &eth_lay3, ip->nexthdr);
+	pkt_set_dissector(pkt, &eth_lay3, ip->nexthdr);
 }
 
 struct protocol ipv6_ops = {

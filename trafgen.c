@@ -14,6 +14,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/fsuid.h>
+#include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/wait.h>
@@ -56,7 +57,8 @@
 
 struct ctx {
 	bool rand, rfraw, jumbo_support, verbose, smoke_test, enforce, qdisc_path;
-	unsigned long kpull, num, reserve_size;
+	size_t reserve_size;
+	unsigned long num;
 	unsigned int cpus;
 	uid_t uid; gid_t gid;
 	char *device, *device_trans, *rhost;
@@ -97,6 +99,7 @@ static const struct option long_options[] = {
 	{"group",		required_argument,	NULL, 'g'},
 	{"prio-high",		no_argument,		NULL, 'H'},
 	{"notouch-irq",		no_argument,		NULL, 'Q'},
+	{"no-sock-mem", 	no_argument,		NULL, 'A'},
 	{"qdisc-path",		no_argument,		NULL, 'q'},
 	{"jumbo-support",	no_argument,		NULL, 'J'},
 	{"no-cpu-stats",	no_argument,		NULL, 'C'},
@@ -109,6 +112,13 @@ static const struct option long_options[] = {
 	{"help",		no_argument,		NULL, 'h'},
 	{NULL, 0, NULL, 0}
 };
+
+static const char *copyright = "Please report bugs to <bugs@netsniff-ng.org>\n"
+	"Copyright (C) 2011-2013 Daniel Borkmann <dborkma@tik.ee.ethz.ch>,\n"
+	"Swiss federal institute of technology (ETH Zurich)\n"
+	"License: GNU GPL version 2.0\n"
+	"This is free software: you are free to change and redistribute it.\n"
+	"There is NO WARRANTY, to the extent permitted by law.";
 
 static int sock;
 static struct cpu_stats *stats;
@@ -126,6 +136,8 @@ struct icmp_filter {
 };
 #endif
 
+#define SMOKE_N_PROBES	100
+
 static void signal_handler(int number)
 {
 	switch (number) {
@@ -141,7 +153,7 @@ static void signal_handler(int number)
 
 static void __noreturn help(void)
 {
-	printf("\ntrafgen %s, multithreaded zero-copy network packet generator\n", VERSION_STRING);
+	printf("trafgen %s, multithreaded zero-copy network packet generator\n", VERSION_STRING);
 	puts("http://www.netsniff-ng.org\n\n"
 	     "Usage: trafgen [options]\n"
 	     "Options:\n"
@@ -156,11 +168,11 @@ static void __noreturn help(void)
 	     "  -P|--cpus <uint>               Specify number of forks(<= CPUs) (def: #CPUs)\n"
 	     "  -t|--gap <time>                Set approx. interpacket gap (s/ms/us/ns, def: us)\n"
 	     "  -S|--ring-size <size>          Manually set mmap size (KiB/MiB/GiB)\n"
-	     "  -k|--kernel-pull <uint>        Kernel batch interval in us (def: 10us)\n"
 	     "  -E|--seed <uint>               Manually set srand(3) seed\n"
 	     "  -u|--user <userid>             Drop privileges and change to userid\n"
 	     "  -g|--group <groupid>           Drop privileges and change to groupid\n"
 	     "  -H|--prio-high                 Make this high priority process\n"
+	     "  -A|--no-sock-mem               Don't tune core socket memory\n"
 	     "  -Q|--notouch-irq               Do not touch IRQ CPU affinity of NIC\n"
 	     "  -q|--qdisc-path                Enabled qdisc kernel path (default off since 3.14)\n"
 	     "  -V|--verbose                   Be more verbose\n"
@@ -169,7 +181,6 @@ static void __noreturn help(void)
 	     "  -e|--example                   Show built-in packet config example\n"
 	     "  -h|--help                      Guess what?!\n\n"
 	     "Examples:\n"
-	     "  See trafgen.txf for configuration file examples.\n"
 	     "  trafgen --dev eth0 --conf trafgen.cfg\n"
 	     "  trafgen -e | trafgen -i - -o eth0 --cpp -n 1\n"
 	     "  trafgen --dev eth0 --conf fuzzing.cfg --smoke-test 10.0.0.1\n"
@@ -181,6 +192,8 @@ static void __noreturn help(void)
 	     "  Run packet on  all CPUs:              { fill(0xff, 64) csum16(0, 64) }\n"
 	     "  Run packet only on CPU1:    cpu(1):   { rnd(64), 0b11001100, 0xaa }\n"
 	     "  Run packet only on CPU1-2:  cpu(1-2): { drnd(64),'a',csum16(1, 8),'b',42 }\n\n"
+	     "Generate config files from existing pcap using netsniff-ng:\n"
+	     "  netsniff-ng --in dump.pcap --out dump.cfg\n"
 	     "Note:\n"
 	     "  Smoke/fuzz test example: machine A, 10.0.0.2 (trafgen) is directly\n"
 	     "  connected to machine B (test kernel), 10.0.0.1. If ICMP reply fails\n"
@@ -195,13 +208,8 @@ static void __noreturn help(void)
 	     "     Tolly            64:55,  78:5,   576:17, 1518:23\n"
 	     "     Cisco            64:7,  594:4,  1518:1\n"
 	     "     RPR Trimodal     64:60, 512:20, 1518:20\n"
-	     "     RPR Quadrimodal  64:50, 512:15, 1518:15, 9218:20\n\n"
-	     "Please report bugs to <bugs@netsniff-ng.org>\n"
-	     "Copyright (C) 2011-2013 Daniel Borkmann <dborkma@tik.ee.ethz.ch>,\n"
-	     "Swiss federal institute of technology (ETH Zurich)\n"
-	     "License: GNU GPL version 2.0\n"
-	     "This is free software: you are free to change and redistribute it.\n"
-	     "There is NO WARRANTY, to the extent permitted by law.\n");
+	     "     RPR Quadrimodal  64:50, 512:15, 1518:15, 9218:20\n");
+	puts(copyright);
 	die();
 }
 
@@ -261,15 +269,10 @@ static void __noreturn example(void)
 
 static void __noreturn version(void)
 {
-	printf("\ntrafgen %s, Git id: %s\n", VERSION_LONG, GITVERSION);
+	printf("trafgen %s, Git id: %s\n", VERSION_LONG, GITVERSION);
 	puts("multithreaded zero-copy network packet generator\n"
-	     "http://www.netsniff-ng.org\n\n"
-	     "Please report bugs to <bugs@netsniff-ng.org>\n"
-	     "Copyright (C) 2011-2013 Daniel Borkmann <dborkma@tik.ee.ethz.ch>,\n"
-	     "Swiss federal institute of technology (ETH Zurich)\n"
-	     "License: GNU GPL version 2.0\n"
-	     "This is free software: you are free to change and redistribute it.\n"
-	     "There is NO WARRANTY, to the extent permitted by law.\n");
+	     "http://www.netsniff-ng.org\n");
+	puts(copyright);
 	die();
 }
 
@@ -349,14 +352,14 @@ static void apply_csum16(int id)
 	}
 }
 
-static struct cpu_stats *setup_shared_var(unsigned long cpus)
+static struct cpu_stats *setup_shared_var(unsigned int cpus)
 {
 	int fd;
 	size_t len = cpus * sizeof(struct cpu_stats);
-	char zbuff[len], file[256];
+	char *zbuff, file[256];
 	struct cpu_stats *buff;
 
-	fmemset(zbuff, 0, len);
+	zbuff = xzmalloc(len);
 	slprintf(file, sizeof(file), ".tmp_mmap.%u", (unsigned int) rand());
 
 	fd = creat(file, S_IRUSR | S_IWUSR);
@@ -366,6 +369,7 @@ static struct cpu_stats *setup_shared_var(unsigned long cpus)
 	fd = open_or_die_m(file, O_RDWR | O_CREAT | O_TRUNC,
 			   S_IRUSR | S_IWUSR);
 	write_or_die(fd, zbuff, len);
+	xfree(zbuff);
 
 	buff = mmap(NULL, len, PROT_READ | PROT_WRITE,
 		    MAP_SHARED, fd, 0);
@@ -379,7 +383,7 @@ static struct cpu_stats *setup_shared_var(unsigned long cpus)
 	return buff;
 }
 
-static void destroy_shared_var(void *buff, unsigned long cpus)
+static void destroy_shared_var(void *buff, unsigned int cpus)
 {
 	munmap(buff, cpus * sizeof(struct cpu_stats));
 }
@@ -431,8 +435,8 @@ static int xmit_smoke_setup(struct ctx *ctx)
 static int xmit_smoke_probe(int icmp_sock, struct ctx *ctx)
 {
 	int ret;
-	unsigned int i, j = 0, probes = 100;
-	short ident, cnt = 1, idstore[probes];
+	unsigned int i, j;
+	short ident, cnt = 1, idstore[SMOKE_N_PROBES];
 	uint8_t outpack[512], *data;
 	struct icmphdr *icmp;
 	struct iphdr *ip;
@@ -445,10 +449,10 @@ static int xmit_smoke_probe(int icmp_sock, struct ctx *ctx)
 	};
 
 	fmemset(idstore, 0, sizeof(idstore));
-	while (probes-- > 0) {
+	for (j = 0; j < SMOKE_N_PROBES; j++) {
 		while ((ident = htons((short) rand())) == 0)
 			sleep(0);
-		idstore[j++] = ident;
+		idstore[j] = ident;
 
 		memset(outpack, 0, sizeof(outpack));
 		icmp = (void *) outpack;
@@ -498,7 +502,7 @@ static int xmit_smoke_probe(int icmp_sock, struct ctx *ctx)
 	return -1;
 }
 
-static void xmit_slowpath_or_die(struct ctx *ctx, int cpu, unsigned long orig_num)
+static void xmit_slowpath_or_die(struct ctx *ctx, unsigned int cpu, unsigned long orig_num)
 {
 	int ret, icmp_sock = -1;
 	unsigned long num = 1, i = 0;
@@ -586,30 +590,22 @@ retry:
 	stats[cpu].state |= CPU_STATS_STATE_RES;
 }
 
-static void xmit_fastpath_or_die(struct ctx *ctx, int cpu, unsigned long orig_num)
+static void xmit_fastpath_or_die(struct ctx *ctx, unsigned int cpu, unsigned long orig_num)
 {
 	int ifindex = device_ifindex(ctx->device);
 	uint8_t *out = NULL;
 	unsigned int it = 0;
-	unsigned long num = 1, i = 0, size;
+	unsigned long num = 1, i = 0;
+	size_t size = ring_size(ctx->device, ctx->reserve_size);
 	struct ring tx_ring;
 	struct frame_map *hdr;
 	struct timeval start, end, diff;
 	struct packet_dyn *pktd;
 	unsigned long long tx_bytes = 0, tx_packets = 0;
 
-	fmemset(&tx_ring, 0, sizeof(tx_ring));
-
-	size = ring_size(ctx->device, ctx->reserve_size);
-
 	set_sock_prio(sock, 512);
-	set_packet_loss_discard(sock);
 
-	setup_tx_ring_layout(sock, &tx_ring, size, ctx->jumbo_support);
-	create_tx_ring(sock, &tx_ring, ctx->verbose);
-	mmap_tx_ring(sock, &tx_ring);
-	alloc_tx_ring_frames(sock, &tx_ring);
-	bind_tx_ring(sock, &tx_ring, ifindex);
+	ring_tx_setup(&tx_ring, sock, size, ifindex, ctx->jumbo_support, ctx->verbose);
 
 	drop_privileges(ctx->enforce, ctx->uid, ctx->gid);
 
@@ -683,12 +679,12 @@ static void xmit_fastpath_or_die(struct ctx *ctx, int cpu, unsigned long orig_nu
 	stats[cpu].state |= CPU_STATS_STATE_RES;
 }
 
-static inline void __set_state(int cpu, sig_atomic_t s)
+static inline void __set_state(unsigned int cpu, sig_atomic_t s)
 {
 	stats[cpu].state = s;
 }
 
-static inline sig_atomic_t __get_state(int cpu)
+static inline sig_atomic_t __get_state(unsigned int cpu)
 {
 	return stats[cpu].state;
 }
@@ -753,7 +749,7 @@ static void __correct_global_delta(struct ctx *ctx, unsigned int cpu, unsigned l
 		ctx->num += delta_correction;
 }
 
-static void __set_state_cf(int cpu, unsigned long p, unsigned long b,
+static void __set_state_cf(unsigned int cpu, unsigned long p, unsigned long b,
 			   sig_atomic_t s)
 {
 	stats[cpu].cf_packets = p;
@@ -761,13 +757,13 @@ static void __set_state_cf(int cpu, unsigned long p, unsigned long b,
 	stats[cpu].state = s;
 }
 
-static void __set_state_cd(int cpu, unsigned long p, sig_atomic_t s)
+static void __set_state_cd(unsigned int cpu, unsigned long p, sig_atomic_t s)
 {
 	stats[cpu].cd_packets = p;
 	stats[cpu].state = s;
 }
 
-static int xmit_packet_precheck(struct ctx *ctx, int cpu)
+static int xmit_packet_precheck(struct ctx *ctx, unsigned int cpu)
 {
 	unsigned int i;
 	unsigned long plen_total, orig = ctx->num;
@@ -826,7 +822,7 @@ static void main_loop(struct ctx *ctx, char *confname, bool slow,
 		fflush(stdout);
 	}
 
-	sock = pf_tx_socket();
+	sock = pf_socket();
 
 	if (ctx->qdisc_path == false)
 		set_sock_qdisc_bypass(sock, ctx->verbose);
@@ -856,10 +852,15 @@ static unsigned int generate_srand_seed(void)
 	return _seed;
 }
 
+static void on_panic_del_rfmon(void *arg)
+{
+	leave_rfmon_mac80211(arg);
+}
+
 int main(int argc, char **argv)
 {
 	bool slow = false, invoke_cpp = false, reseed = true, cpustats = true;
-	bool prio_high = false, set_irq_aff = true;
+	bool prio_high = false, set_irq_aff = true, set_sock_mem = true;
 	int c, opt_index, vals[4] = {0}, irq;
 	uint64_t gap = 0;
 	unsigned int i, j;
@@ -910,6 +911,9 @@ int main(int argc, char **argv)
 		case 'H':
 			prio_high = true;
 			break;
+		case 'A':
+			set_sock_mem = false;
+			break;
 		case 'Q':
 			set_irq_aff = false;
 			break;
@@ -946,7 +950,8 @@ int main(int argc, char **argv)
 			ctx.enforce = true;
 			break;
 		case 'k':
-			ctx.kpull = strtoul(optarg, NULL, 0);
+			printf("Option -k/--kernel-pull is no longer used and "
+			       "will be removed in a future release!\n");
 			break;
 		case 'E':
 			seed = strtoul(optarg, NULL, 0);
@@ -959,6 +964,7 @@ int main(int argc, char **argv)
 		case 't':
 			slow = true;
 			ptr = optarg;
+			prctl(PR_SET_TIMERSLACK, 1UL);
 			gap = strtoul(optarg, NULL, 0);
 
 			for (j = i = strlen(optarg); i > 0; --i) {
@@ -993,7 +999,6 @@ int main(int argc, char **argv)
 			break;
 		case 'S':
 			ptr = optarg;
-			ctx.reserve_size = 0;
 
 			for (j = i = strlen(optarg); i > 0; --i) {
 				if (!isdigit(optarg[j - i]))
@@ -1010,7 +1015,7 @@ int main(int argc, char **argv)
 			else
 				panic("Syntax error in ring size param!\n");
 
-			ctx.reserve_size *= strtol(optarg, NULL, 0);
+			ctx.reserve_size *= strtoul(optarg, NULL, 0);
 			break;
 		case '?':
 			switch (optopt) {
@@ -1058,7 +1063,8 @@ int main(int argc, char **argv)
 		set_sched_status(SCHED_FIFO, sched_get_priority_max(SCHED_FIFO));
 	}
 
-	set_system_socket_memory(vals, array_size(vals));
+	if (set_sock_mem)
+		set_system_socket_memory(vals, array_size(vals));
 	xlockme();
 
 	if (ctx.rfraw) {
@@ -1066,8 +1072,17 @@ int main(int argc, char **argv)
 		xfree(ctx.device);
 
 		enter_rfmon_mac80211(ctx.device_trans, &ctx.device);
+		panic_handler_add(on_panic_del_rfmon, ctx.device);
 		sleep(0);
 	}
+
+	/*
+	 * If number of packets is smaller than number of CPUs use only as
+	 * many CPUs as there are packets. Otherwise we end up sending more
+	 * packets than intended or none at all.
+	 */
+	if (ctx.num)
+		ctx.cpus = min_t(unsigned int, ctx.num, ctx.cpus);
 
 	irq = device_irq_number(ctx.device);
 	if (set_irq_aff)
@@ -1104,7 +1119,8 @@ int main(int argc, char **argv)
 	if (ctx.rfraw)
 		leave_rfmon_mac80211(ctx.device);
 
-	reset_system_socket_memory(vals, array_size(vals));
+	if (set_sock_mem)
+		reset_system_socket_memory(vals, array_size(vals));
 
 	for (i = 0, tx_packets = tx_bytes = 0; i < ctx.cpus; i++) {
 		while ((__get_state(i) & CPU_STATS_STATE_RES) == 0)

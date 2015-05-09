@@ -122,7 +122,7 @@ enum pcap_mode {
 };
 
 struct pcap_file_ops {
-	void (*init_once_pcap)(void);
+	void (*init_once_pcap)(bool enforce_prio);
 	int (*pull_fhdr_pcap)(int fd, uint32_t *magic, uint32_t *linktype);
 	int (*push_fhdr_pcap)(int fd, uint32_t magic, uint32_t linktype);
 	int (*prepare_access_pcap)(int fd, enum pcap_mode mode, bool jumbo);
@@ -161,8 +161,8 @@ static inline int pcap_devtype_to_linktype(const char *ifname)
 	case ARPHRD_IPGRE:
 	case ARPHRD_IP6GRE:
 	case ARPHRD_ETHER:	return LINKTYPE_EN10MB;
+	case ARPHRD_IEEE80211_RADIOTAP: return LINKTYPE_IEEE802_11_RADIOTAP;
 	case ARPHRD_IEEE80211_PRISM:
-	case ARPHRD_IEEE80211_RADIOTAP:
 	case ARPHRD_IEEE80211:	return LINKTYPE_IEEE802_11;
 	case ARPHRD_NETLINK:	return LINKTYPE_NETLINK;
 	case ARPHRD_EETHER:	return LINKTYPE_EN3MB;
@@ -416,6 +416,7 @@ static inline void tpacket_hdr_to_pcap_pkthdr(struct tpacket2_hdr *thdr,
 				     thdr->tp_status, sll, phdr, type);
 }
 
+#ifdef HAVE_TPACKET3
 static inline void tpacket3_hdr_to_pcap_pkthdr(struct tpacket3_hdr *thdr,
 					       struct sockaddr_ll *sll,
 					       pcap_pkthdr_t *phdr,
@@ -425,6 +426,7 @@ static inline void tpacket3_hdr_to_pcap_pkthdr(struct tpacket3_hdr *thdr,
 				     thdr->tp_snaplen, thdr->tp_len,
 				     0, sll, phdr, type);
 }
+#endif
 
 static inline void pcap_pkthdr_to_tpacket_hdr(pcap_pkthdr_t *phdr,
 					      enum pcap_type type,
@@ -648,6 +650,7 @@ static const bool pcap_supported_linktypes[LINKTYPE_MAX] __maybe_unused = {
 	[LINKTYPE_ATM_CLIP] = true,
 	[LINKTYPE_C_HDLC] = true,
 	[LINKTYPE_IEEE802_11] = true,
+	[LINKTYPE_IEEE802_11_RADIOTAP] = true,
 	[LINKTYPE_FRELAY] = true,
 	[LINKTYPE_ECONET] = true,
 	[LINKTYPE_ARCNET_LINUX] = true,

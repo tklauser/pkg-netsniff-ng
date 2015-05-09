@@ -1,8 +1,9 @@
-trafgen-libs =	$(shell pkg-config --libs libnl-3.0) \
-		$(shell pkg-config --libs libnl-genl-3.0) \
+trafgen-libs =	$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --libs libnl-3.0) \
+		$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --libs libnl-genl-3.0) \
 		-lm
 
 trafgen-objs =	xmalloc.o \
+		die.o \
 		ioops.o \
 		privs.o \
 		proc.o \
@@ -24,9 +25,9 @@ trafgen-lex =	trafgen_lexer.yy.o
 
 trafgen-yaac =	trafgen_parser.tab.o
 
-trafgen-eflags = $(shell pkg-config --cflags libnl-3.0) \
-		 $(shell pkg-config --cflags libnl-genl-3.0) \
-		 -DHAVE_DISSECTOR_PROTOS -I..
+trafgen-eflags = $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --cflags libnl-3.0) \
+		 $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --cflags libnl-genl-3.0) \
+		 -I..
 
 trafgen-confs =	trafgen_stddef.h
 

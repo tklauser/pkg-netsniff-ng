@@ -23,17 +23,17 @@
 #include "mops.h"
 #include "llist.h"
 
-void mz_cli_init()
+void mz_cli_init(void)
 {
 	amp_head = automops_init();
 	
-	// Initialize default credentials (will be overwritten by mz.cfg)
+	// Initialize default credentials (will be overwritten by mausezahn.conf)
 	strcpy(mz_username, MZ_DEFAULT_USERNAME);
 	strcpy(mz_password, MZ_DEFAULT_PASSWORD);
 	strcpy(mz_enable, MZ_DEFAULT_ENABLE_PASSWORD);
 	
 	// read login credentials from config file
-	if (cli_read_cfg("mz.cfg")) {
+	if (cli_read_cfg("mausezahn.conf")) {
 		fprintf(stderr, "mz: Problems opening config file. Will use defaults\n");
 	}
 
@@ -56,7 +56,7 @@ int cli_read_cfg(char *str)
 	char dev[256];
 	FILE *fd;
 	int i, j=0, len, found=0, nonspc=0;
-	int user=0, pass=0, ena=0, amp=0, mgmt_only=0, cli=0;
+	int user=0, pass=0, ena=0, amp=0, mgmt_only=0, cli=0, port=0, addr=0;
 	
 	strncpy(filename, str, 255);
 	 
@@ -78,8 +78,10 @@ int cli_read_cfg(char *str)
 		if (nonspc==0) continue; else nonspc=0;
 		if (!user) user = sscanf(line, " user = %s ", mz_username);
 		if (!pass) pass = sscanf(line, " password = %s ", mz_password);
-		if (!ena) ena  = sscanf(line, " enable = %s ", mz_enable);
-		if (!cli) cli  = sscanf(line, " cli-device = %s ", dev);
+		if (!ena)  ena  = sscanf(line, " enable = %s ", mz_enable);
+		if (!port) port = sscanf(line, " port = %i ", &mz_port);
+		if (!addr) addr = sscanf(line, " listen-addr = %s ", mz_listen_addr);
+		if (!cli)  cli  = sscanf(line, " cli-device = %s ", dev);
 		if (cli==1) {
 			for (i=0; i<device_list_entries; i++) {
 				if (strncmp(device_list[i].dev, dev, 16)==0) {
@@ -131,7 +133,7 @@ int cli_read_cfg(char *str)
 		}
 	}
 	fclose(fd);
-	
+
 	if (verbose) {
 		if (user!=1)
 			fprintf(stderr, "%s: No user name specified - will use default.\n", filename);
@@ -141,6 +143,12 @@ int cli_read_cfg(char *str)
 		
 		if (ena!=1) 
 			fprintf(stderr, "%s: No enable password specified - will use default.\n", filename);
+
+		if (port!=1)
+			fprintf(stderr, "%s: No port specified - will use default.\n", filename);
+
+		if (addr!=1)
+			fprintf(stderr, "%s: No listen address specified - will use default.\n", filename);
 	}
 	
 	cli_debug = 0;
@@ -175,7 +183,7 @@ int cli_read_cfg(char *str)
 // ************************************************************************
 
 
-int cli()
+int cli(void)
 {
    struct sockaddr_in servaddr;
    struct cli_command  
@@ -528,13 +536,16 @@ int cli()
 	   }
    }
    
-	
    // Listen on port mz_port (default: 25542, towel day)
    memset(&servaddr, 0, sizeof(servaddr));
    servaddr.sin_family = AF_INET;
-   servaddr.sin_addr.s_addr = htonl(INADDR_ANY);  // TODO: specified interface
+   inet_aton(mz_listen_addr, &servaddr.sin_addr);
    servaddr.sin_port = htons(mz_port); 
    bind(s, (struct sockaddr *)&servaddr, sizeof(servaddr));
+
+   if (!quiet) {
+                       fprintf(stderr, "Mausezahn accepts incoming Telnet connections on %s:%i.\n",  mz_listen_addr, mz_port);
+               }
 
    // Wait for a connection
    listen(s, 50);

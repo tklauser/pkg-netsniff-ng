@@ -79,7 +79,7 @@ static inline void verbose_l2(const char *format, ...)
 
 // "Dies ist ein schrecklicher Ort."
 
-#define MZ_DEFAULT_CONFIG_PATH "/etc/mausezahn/"   // see also mz_default_config_path below
+#define MZ_DEFAULT_CONFIG_PATH "/etc/netsniff-ng/"   // see also mz_default_config_path below
 #define MZ_DEFAULT_LOG_PATH "/var/log/mausezahn/"  // see also mz_default_log_path below
 
 #define SLEEP usleep               // The sleep function to use. Consider 'nanosleep' in future.
@@ -256,20 +256,21 @@ struct struct_rtp {
 
 enum operating_modes
 {
-   BYTE_STREAM, 
-     ARP, 
-     BPDU, 
-     IP, 
-     ICMP,
-     ICMP6,
-     UDP, 
-     TCP,
-     DNS,
-     CDP,
-     RTP,
-     RX_RTP,
-     SYSLOG,
-     LLDP
+	BYTE_STREAM,
+	ARP,
+	BPDU,
+	IP,
+	ICMP,
+	ICMP6,
+	UDP,
+	TCP,
+	DNS,
+	CDP,
+	RTP,
+	RX_RTP,
+	SYSLOG,
+	LLDP,
+	IGMP
 } mode;
 
 
@@ -521,7 +522,7 @@ int char2bits (char c, char *str);
 int mz_strcmp(char* usr, char* str, int min);
 int mz_tok(char * str, char * delim, int anz, ...);
 int delay_parse (struct timespec *t, char *a, char *b);
-int reset();
+int reset(void);
 
 // ************************************
 // 
@@ -561,10 +562,11 @@ int            send_frame (libnet_t *l, libnet_ptag_t  t3, libnet_ptag_t  t4);
 //   Prototypes: Layer 4
 //
 // ************************************
-libnet_ptag_t  create_udp_packet (libnet_t *l);  
-libnet_ptag_t  create_icmp_packet (libnet_t *l);  	
-libnet_ptag_t  create_icmp6_packet (libnet_t *l);
-libnet_ptag_t  create_tcp_packet (libnet_t *l);
+libnet_ptag_t  create_udp_packet(libnet_t *l);
+libnet_ptag_t  create_icmp_packet(libnet_t *l);
+libnet_ptag_t  create_icmp6_packet(libnet_t *l);
+libnet_ptag_t  create_tcp_packet(libnet_t *l);
+libnet_ptag_t  create_igmp_packet(libnet_t *l);
 
 
 // ************************************

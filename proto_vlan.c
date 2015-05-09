@@ -16,7 +16,7 @@
 struct vlanhdr {
 	uint16_t h_vlan_TCI;
 	uint16_t h_vlan_encapsulated_proto;
-} __attribute__((packed));
+} __packed;
 
 static void vlan(struct pkt_buff *pkt)
 {
@@ -35,7 +35,7 @@ static void vlan(struct pkt_buff *pkt)
 	tprintf("Proto (0x%.4x)", ntohs(vlan->h_vlan_encapsulated_proto));
 	tprintf(" ]\n");
 
-	pkt_set_proto(pkt, &eth_lay2, ntohs(vlan->h_vlan_encapsulated_proto));
+	pkt_set_dissector(pkt, &eth_lay2, ntohs(vlan->h_vlan_encapsulated_proto));
 }
 
 static void vlan_less(struct pkt_buff *pkt)
@@ -50,7 +50,7 @@ static void vlan_less(struct pkt_buff *pkt)
 
 	tprintf(" VLAN%d", (tci & 0x0FFF));
 
-	pkt_set_proto(pkt, &eth_lay2, ntohs(vlan->h_vlan_encapsulated_proto));
+	pkt_set_dissector(pkt, &eth_lay2, ntohs(vlan->h_vlan_encapsulated_proto));
 }
 
 struct protocol vlan_ops = {

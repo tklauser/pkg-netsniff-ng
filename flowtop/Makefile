@@ -1,14 +1,16 @@
-flowtop-libs =	-lGeoIP \
-		-lurcu \
+flowtop-libs =	-lurcu \
 		-lnetfilter_conntrack \
-		$(shell pkg-config --libs ncurses 2> /dev/null \
+		$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --libs ncurses 2> /dev/null \
 			|| echo '-lncurses') \
-		$(shell pkg-config --libs tinfo 2> /dev/null ) \
-		-lpthread \
+		$(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --libs tinfo 2> /dev/null ) \
+		-lpthread
+
+ifeq ($(CONFIG_GEOIP), 1)
+flowtop-libs +=	-lGeoIP \
 		-lz
+endif
 
 flowtop-objs =	xmalloc.o \
-		ioops.o \
 		oui.o \
 		str.o \
 		sig.o \
@@ -16,16 +18,18 @@ flowtop-objs =	xmalloc.o \
 		dev.o \
 		link.o \
 		hash.o \
-		dissector_eth.o \
-		dissector_80211.o \
-		dissector.o \
-		proto_none.o \
+		lookup.o \
 		tprintf.o \
-		geoip.o \
 		screen.o \
+		die.o \
 		flowtop.o
 
-flowtop-eflags = $(shell pkg-config --cflags ncurses)
+ifeq ($(CONFIG_GEOIP), 1)
+flowtop-objs +=	geoip.o \
+		ioops.o
+endif
+
+flowtop-eflags = $(shell $(PKG_CONFIG) --cflags ncurses)
 
 flowtop-confs =	tcp.conf \
 		udp.conf \

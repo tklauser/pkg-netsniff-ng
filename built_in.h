@@ -73,7 +73,11 @@ typedef uint8_t		u8;
 #endif
 
 #ifndef __maybe_unused
-# define __maybe_unused		__attribute__ ((__unused__))
+# define __maybe_unused		__attribute__((__unused__))
+#endif
+
+#ifndef __warn_unused_result
+# define __warn_unused_result	__attribute__((warn_unused_result))
 #endif
 
 #ifndef noinline
@@ -96,9 +100,12 @@ typedef uint8_t		u8;
 # define __force		/* unimplemented */
 #endif
 
-#ifndef force_cast
-# define force_cast(type, arg)	((type) (arg))
-#endif
+/* see config_enabled et al. in linux/kconfig.h for details. */
+#define __ARG_PLACEHOLDER_1 			0,
+#define is_defined(cfg)				_is_defined(cfg)
+#define _is_defined(value)			__is_defined(__ARG_PLACEHOLDER_##value)
+#define __is_defined(arg1_or_junk)		___is_defined(arg1_or_junk 1, 0)
+#define ___is_defined(__ignored, val, ...)	val
 
 #ifndef max
 # define max(a, b)							\
@@ -372,18 +379,6 @@ static inline u64 cpu_to_le64(u64 val)
 
 #ifndef PACKET_QDISC_BYPASS
 # define PACKET_QDISC_BYPASS 20
-#endif
-
-#ifndef POLLRDNORM
-# define POLLRDNORM			0x0040
-#endif
-
-#ifndef POLLWRNORM
-# define POLLWRNORM			0x0100
-#endif
-
-#ifndef POLLRDHUP
-# define POLLRDHUP			0x2000
 #endif
 
 #ifndef ARPHRD_IEEE802154_MONITOR

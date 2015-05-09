@@ -73,6 +73,9 @@ Start mausezahn in interactive mode with a Cisco-like CLI. Use telnet to log
 into the local mausezahn instance. If no port has been specified, port 25542
 is used by default.
 .PP
+.SS -l <IP>
+Specify the IP address mausezahn should bind to when in interactive mode, default: 0.0.0.0.
+.PP
 .SS -v
 Verbose mode. Capital \-V is even more verbose.
 .PP
@@ -100,7 +103,7 @@ higher layer packets the number of additional padding bytes are specified.
 .SS -a <src-mac|keyword>
 Use specified source MAC address with hexadecimal notation such as 00:00:aa:bb:cc:dd.
 By default the interface MAC address will be used. The keywords ''rand'' and
- ''own'' refer to a random MAC address (only unicast addresses are created)
+''own'' refer to a random MAC address (only unicast addresses are created)
 and the own address, respectively. You can also use the keywords mentioned
 below although broadcast-type source addresses are officially invalid.
 .PP
@@ -108,7 +111,7 @@ below although broadcast-type source addresses are officially invalid.
 Use specified destination MAC address. By default, a broadcast is sent in raw
 layer 2 mode or to the destination hosts or gateway interface MAC address in normal
 (IP) mode. You can use the same keywords as mentioned above, as well as
- ''bc'' or ''bcast'', ''cisco'', and ''stp''. Please note that for the destination
+''bc'' or ''bcast'', ''cisco'', and ''stp''. Please note that for the destination
 MAC address the ''rand'' keyword is supported but creates a random address only
 once, even when you send multiple packets.
 .PP
@@ -123,11 +126,11 @@ corresponding IP address automatically.
 Use specified destination IP address (default is broadcast i.e. 255.255.255.255).
 As with the source address (see above) you can also specify a range or a DNS name.
 .PP
-.SS -t <packet-type>
+.SS -t <packet-type [help] | help>
 Create the specified packet type using the built-in packet builder. Currently,
 supported packet types are: ''arp'', ''bpdu'', ''ip'', ''udp'', ''tcp'', ''rtp'',
 and ''dns''. Currently, there is also limited support for ''icmp''. Type
- ''\-t help'' to verify which packet builders your actual mausezahn version
+''\-t help'' to verify which packet builders your actual mausezahn version
 supports. Also, for any particular packet type, for example ''tcp'' type
  ''mausezahn \-t tcp help'' to receive a more in-depth context specific help.
 .PP
@@ -167,7 +170,7 @@ You can use also spaces as separation characters.
 .PP
 .SH USAGE EXAMPLE
 .PP
-For more comprehensive examples, have a look at the two followng HOWTO sections.
+For more comprehensive examples, have a look at the two following HOWTO sections.
 .PP
 .SS mausezahn eth0 \-c 0 \-d 2s \-t bpdu vlan=5
 Send BPDU frames for VLAN 5 as used with Cisco's PVST+ type of STP. By default
@@ -210,22 +213,53 @@ simultaneously and sweep through the whole TCP sequence number space with an
 increment of 1500. Finally set the urgent pointer to 666, i.e. pointing to
 nowhere.
 .PP
+.SH CONFIGURATION FILE
+.PP
+When mausezahn is run in interactive mode it automatically looks for and reads
+a configuration file located at /etc/netsniff-ng/mausezahn.conf for custom options
+if the file is available, otherwise it uses defaults set at compile time.
+.SS Config file: /etc/netsniff-ng/mausezahn.conf
+.PP
+The configuration file contains lines of the form:
+
+	option = value
+
+Options supported in the configuration file are:
+   Option: 	 	Description:
+
+   user			Username for authentication (default: mz)
+   password		Password for authentication (default: mz)
+   enable		     Password to enter privilege mode (default: mops)
+   port			The listening port for the CLI (default: 25542)
+   listen-addr		IP address to bind CLI to (default: 0.0.0.0)
+   management-only	Set management interface (no data traffic is allowed to pass through)
+   cli-device		Interface to bind CLI to (default: all) *not fully implemented*
+   automops         Path to automops file (contains XML data describing protocols) *in development*
+
+.SS Example:
+.PP
+ $ cat /etc/netsniff-ng/mausezahn.conf
+ user = mzadmin
+ password = mzpasswd
+ enable = privilege-mode-passwd
+ port = 65000
+ listen-addr = 127.0.0.1
+.PP
 .SH INTERACTIVE MODE HOWTO
 .PP
 .SS Telnet:
 .PP
 Using the interactive mode requires starting mausezahn as a server:
 .PP
-  mausezahn \-x
+  # mausezahn \-x
 .PP
 Now you can telnet(1) to that server using the default port number 25542, but also
 an arbitrary port number can be specified:
 .PP
-  mausezahn \-x 99
-.PP
-mausezahn accepts incoming telnet connections on port 99.
-.PP
+  # mausezahn \-x 99
+  mausezahn accepts incoming telnet connections on port 99.
   mz: Problems opening config file. Will use defaults
+.PP
 .PP
 Either from another terminal or from another host try to telnet to the
 mausezahn server:
@@ -244,17 +278,12 @@ mausezahn server:
   mz#
 .PP
 It is recommended to configure your own login credentials in
-/etc/mausezahn/mz.cfg, such as:
-.PP
-  user = foo
-  password = bar
-  enable = bla
-.PP
+/etc/netsniff-ng/mausezahn.conf, (see configuration file section)
 .SS Basics:
 .PP
 Since you reached the mausezahn prompt, lets try some common commands. You can
-use the '?' character at any time for content-sensitive help. Note that cisco-
-like short form of commands are accepted in interactive mode. For example, one
+use the '?' character at any time for context-specific help. Note that Cisco-like
+short form of commands are accepted in interactive mode. For example, one
 can use "sh pac" instead of "show packet"; another common example is to use
 "config t" in place of "configure terminal". For readability, this manual will
 continue with the full commands.

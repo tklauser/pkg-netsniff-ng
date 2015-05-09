@@ -136,11 +136,6 @@ gaps.
 Manually define the TX_RING resp. TX_RING size in ''<num>KiB/MiB/GiB''. On
 default the size is being determined based on the network connectivity rate.
 .PP
-.SS -k <uint>, --kernel-pull <uint>
-Manually define the interval in micro-seconds where the kernel should be triggered
-to batch process the ring buffer frames. By default, it is every 10us, but it can
-manually be prolonged, for instance..
-.PP
 .SS -E <uint>, --seed <uint>
 Manually set the seed for pseudo random number generator (PRNG) in trafgen. By
 default, a random seed from /dev/urandom is used to feed glibc's PRNG. If that
@@ -156,6 +151,15 @@ Set this process as a high priority process in order to achieve a higher
 scheduling rate resp. CPU time. This is however not the default setting, since
 it could lead to starvation of other processes, for example low priority kernel
 threads.
+.PP
+.SS -A, --no-sock-mem
+Do not change systems default socket memory setting during testrun.
+Default is to boost socket buffer memory during the test to:
+.PP
+   /proc/sys/net/core/rmem_default:4194304
+   /proc/sys/net/core/wmem_default:4194304
+   /proc/sys/net/core/rmem_max:104857600
+   /proc/sys/net/core/wmem_max:104857600
 .PP
 .SS -Q, --notouch-irq
 Do not reassign the NIC's IRQ CPU affinity settings.
@@ -432,7 +436,7 @@ For smoke/fuzz testing with trafgen, it is recommended to have a direct
 link between the host you want to analyze (''victim'' machine) and the host
 you run trafgen on (''attacker'' machine). If the ICMP reply from the victim
 fails, we assume that probably its kernel crashed, thus we print the last
-sent packet togther with the seed and quit probing. It might be very unlikely
+sent packet together with the seed and quit probing. It might be very unlikely
 to find such a ping-of-death on modern Linux systems. However, there might
 be a good chance to find it on some proprietary (e.g. embedded) systems or
 buggy driver firmwares that are in the wild. Also, fuzz testing can be done
