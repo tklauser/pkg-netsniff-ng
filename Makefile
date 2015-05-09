@@ -1,6 +1,6 @@
 # netsniff-ng build system
 # Copyright 2012 - 2013 Daniel Borkmann <borkmann@gnumaniacs.org>
-# Copyright 2013 Tobias Klauser <tklauser@distanz.ch>
+# Copyright 2013 - 2015 Tobias Klauser <tklauser@distanz.ch>
 # Subject to the GNU GPL, version 2.
 
 -include Config
@@ -15,9 +15,9 @@ endif
 
 VERSION = 0
 PATCHLEVEL = 5
-SUBLEVEL = 8
+SUBLEVEL = 9
 EXTRAVERSION =
-NAME = Ziggomatic
+NAME = Cilonen
 
 TOOLS ?= $(CONFIG_TOOLS)
 TOOLS ?= netsniff-ng trafgen astraceroute flowtop ifpps bpfc curvetun mausezahn
@@ -25,8 +25,8 @@ TOOLS ?= netsniff-ng trafgen astraceroute flowtop ifpps bpfc curvetun mausezahn
 # For packaging purposes, prefix can define a different path.
 PREFIX ?= /usr/local
 
-# Disable if you don't want it
-CCACHE ?= $(CONFIG_CCACHE)
+# Set to use ccache for compilation
+CCACHE ?=
 
 # Location of an alternative destination directory for installation
 # Useful when cross-compiling and installing in a dedicated target directory
@@ -35,7 +35,7 @@ DESTDIR=
 # Location of installation paths.
 SBINDIR = $(PREFIX)/sbin
 INCDIR = $(PREFIX)/include
-ETCDIR = $(PREFIX)/etc
+ETCDIR ?= /etc
 ETCDIRE = $(ETCDIR)/netsniff-ng
 MAN8DIR = $(PREFIX)/share/man/man8
 
@@ -52,23 +52,26 @@ else
   DEBUG := 0
 endif
 
+# Compiler detection
+ifneq ($(CC),)
+ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
+COMPILER := clang
+else
+COMPILER := gcc
+endif
+export COMPILER
+endif
+
 # For packaging purposes, you might want to call your own:
 #   make CFLAGS="<flags>"
 CFLAGS_DEF  = -std=gnu99
 CFLAGS_DEF += -pipe
+CFLAGS_DEF += -O2
 
 ifeq ($(DEBUG), 1)
-  CFLAGS_DEF += -O2
   CFLAGS_DEF += -g
-else
- ifeq ($(DISTRO), 1)
-  CFLAGS_DEF += -O2
- else
-  CFLAGS_DEF += -march=native
-  CFLAGS_DEF += -mtune=native
-  CFLAGS_DEF += -O3
- endif
 endif
+
 ifeq ($(HARDENING), 1)
   CFLAGS_DEF += -fPIE -pie
   CFLAGS_DEF += -Wl,-z,relro,-z,now
@@ -83,7 +86,9 @@ endif
 CFLAGS_DEF += -fomit-frame-pointer
 CFLAGS_DEF += -fno-strict-aliasing
 CFLAGS_DEF += -fasynchronous-unwind-tables
+ifneq ($(COMPILER), clang)
 CFLAGS_DEF += -fno-delete-null-pointer-checks
+endif
 
 CFLAGS_MIN  = -D_REENTRANT
 CFLAGS_MIN += -D_LARGEFILE_SOURCE
@@ -107,19 +112,21 @@ ifeq ("$(origin CROSS_LD_LIBRARY_PATH)", "command line")
   LDFLAGS += -L$(CROSS_LD_LIBRARY_PATH)
 endif
 
+CHECKFLAGS = -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix \
+	     -Wbitwise -Wnoreturn-void
+
 VERSION_SHORT  =  $(VERSION).$(PATCHLEVEL).$(SUBLEVEL)$(EXTRAVERSION)
 VERSION_STRING = "$(VERSION_SHORT)$(CONFIG_RC)"
 VERSION_LONG   = "$(VERSION_SHORT)$(CONFIG_RC) ($(NAME))"
 
 export VERSION PATCHLEVEL SUBLEVEL EXTRAVERSION
-export CROSS_COMPILE
-export DEBUG DISTRO HARDENING
+export DEBUG HARDENING
 
 bold   = $(shell tput bold)
 normal = $(shell tput sgr0)
 
-ifeq ("$(origin CROSS_COMPILE)", "command line")
-  WHAT := Cross compiling
+ifneq ("$(CROSS_COMPILE)", "")
+  WHAT := Cross-compiling
 else
   WHAT := Building
 endif
@@ -169,5 +176,5 @@ $(foreach tool,$(TOOLS),$(eval $(call TOOL_templ,$(tool))))
 %:: ;
 
 $(TOOLS):
-	$(LD) $(LDFLAGS) -o $@/$@ $@/*.o $($@-libs)
-	$(STRIP) $@/$@
+	$(LDQ) $(LDFLAGS) -o $@/$@ $@/*.o $($@-libs)
+	$(STRIPQ) $@/$@

@@ -73,9 +73,9 @@ static GeoIP *gi4_asname = NULL, *gi6_asname = NULL;
 static GeoIP *gi4_country = NULL, *gi6_country = NULL;
 static GeoIP *gi4_city = NULL, *gi6_city = NULL;
 
-static GeoIPRecord empty = { 0 };
+static GeoIPRecord empty = { NULL };
 
-static char *servers[16] = { 0 };
+static char *servers[16] = { NULL };
 
 #define CITYV4		(1 << 0)
 #define CITYV6		(1 << 1)
@@ -162,7 +162,9 @@ static int geoip_get_database(const char *host, int which)
 	size_t lenl = strlen("Content-Length: ");
 	size_t lent = strlen("HTTP/1.1 200 OK");
 	size_t lenc = strlen("\r\n\r\n");
-
+	const char *http_req_fmt = "GET %s%s HTTP/1.1\n"
+				   "Connection: close\n"
+				   "Host: %s\r\n\r\n";
 again:
 	found = good = 0;
 	ptr = NULL;
@@ -172,7 +174,7 @@ again:
 	if (sock < 0)
 		return -EIO;
 
-	slprintf(raw, sizeof(raw), "GET %s%s HTTP/1.1\nHost: %s\r\n\r\n",
+	slprintf(raw, sizeof(raw), http_req_fmt,
 		 retry ? files[which].possible_prefix : "",
 		 files[which].remote, host);
 
@@ -181,8 +183,6 @@ again:
 		close(sock);
 		return -EIO;
 	}
-
-	shutdown(sock, SHUT_WR);
 
 	slprintf(zfile, sizeof(zfile), "%s.gz", files[which].local);
 	fd = open_or_die_m(zfile, O_WRONLY | O_CREAT | O_TRUNC, DEFFILEMODE);
@@ -238,7 +238,7 @@ again:
 
 		ptr = raw;
 		len = ret;
-	} while(ret > 0);
+	} while (ret > 0);
 
 	printf("\n");
 
@@ -256,86 +256,86 @@ again:
 	return 0;
 }
 
-static GeoIPRecord *geoip4_get_record(struct sockaddr_in sa)
+static GeoIPRecord *geoip4_get_record(struct sockaddr_in *sa)
 {
 	bug_on(gi4_city == NULL);
 
-	return GeoIP_record_by_ipnum(gi4_city, ntohl(sa.sin_addr.s_addr)) ? : &empty;
+	return GeoIP_record_by_ipnum(gi4_city, ntohl(sa->sin_addr.s_addr)) ? : &empty;
 }
 
-static GeoIPRecord *geoip6_get_record(struct sockaddr_in6 sa)
+static GeoIPRecord *geoip6_get_record(struct sockaddr_in6 *sa)
 {
 	bug_on(gi6_city == NULL);
 
-	return GeoIP_record_by_ipnum_v6(gi6_city, sa.sin6_addr) ? : &empty;
+	return GeoIP_record_by_ipnum_v6(gi6_city, sa->sin6_addr) ? : &empty;
 }
 
-const char *geoip4_as_name(struct sockaddr_in sa)
+const char *geoip4_as_name(struct sockaddr_in *sa)
 {
 	bug_on(gi4_asname == NULL);
 
-	return GeoIP_name_by_ipnum(gi4_asname, ntohl(sa.sin_addr.s_addr));
+	return GeoIP_name_by_ipnum(gi4_asname, ntohl(sa->sin_addr.s_addr));
 }
 
-const char *geoip6_as_name(struct sockaddr_in6 sa)
+const char *geoip6_as_name(struct sockaddr_in6 *sa)
 {
 	bug_on(gi6_asname == NULL);
 
-	return GeoIP_name_by_ipnum_v6(gi6_asname, sa.sin6_addr);
+	return GeoIP_name_by_ipnum_v6(gi6_asname, sa->sin6_addr);
 }
 
-float geoip4_longitude(struct sockaddr_in sa)
+float geoip4_longitude(struct sockaddr_in *sa)
 {
 	return geoip4_get_record(sa)->longitude;
 }
 
-float geoip4_latitude(struct sockaddr_in sa)
+float geoip4_latitude(struct sockaddr_in *sa)
 {
 	return geoip4_get_record(sa)->latitude;
 }
 
-float geoip6_longitude(struct sockaddr_in6 sa)
+float geoip6_longitude(struct sockaddr_in6 *sa)
 {
 	return geoip6_get_record(sa)->longitude;
 }
 
-float geoip6_latitude(struct sockaddr_in6 sa)
+float geoip6_latitude(struct sockaddr_in6 *sa)
 {
 	return geoip6_get_record(sa)->latitude;
 }
 
-const char *geoip4_city_name(struct sockaddr_in sa)
+const char *geoip4_city_name(struct sockaddr_in *sa)
 {
 	return geoip4_get_record(sa)->city;
 }
 
-const char *geoip6_city_name(struct sockaddr_in6 sa)
+const char *geoip6_city_name(struct sockaddr_in6 *sa)
 {
 	return geoip6_get_record(sa)->city;
 }
 
-const char *geoip4_region_name(struct sockaddr_in sa)
+const char *geoip4_region_name(struct sockaddr_in *sa)
 {
 	return geoip4_get_record(sa)->region;
 }
 
-const char *geoip6_region_name(struct sockaddr_in6 sa)
+const char *geoip6_region_name(struct sockaddr_in6 *sa)
 {
 	return geoip6_get_record(sa)->region;
 }
 
-const char *geoip4_country_name(struct sockaddr_in sa)
+const char *geoip4_country_name(struct sockaddr_in *sa)
 {
 	bug_on(gi4_country == NULL);
 
-	return GeoIP_country_name_by_ipnum(gi4_country, ntohl(sa.sin_addr.s_addr));
+	return GeoIP_country_name_by_ipnum(gi4_country, ntohl(sa->sin_addr.s_addr));
 }
 
-const char *geoip6_country_name(struct sockaddr_in6 sa)
+const char *geoip6_country_name(struct sockaddr_in6 *sa)
 {
 	bug_on(gi6_country == NULL);
 
-	return GeoIP_country_name_by_ipnum_v6(gi6_country, sa.sin6_addr);
+	return GeoIP_country_name_by_ipnum_v6(gi6_country, sa->sin6_addr);
 }
 
 static int fdout, fderr;

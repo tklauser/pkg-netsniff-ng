@@ -10,6 +10,7 @@
 #include <curses.h>
 #include <getopt.h>
 #include <ctype.h>
+#include <inttypes.h>
 #include <sys/socket.h>
 #include <sys/fsuid.h>
 #include <sys/types.h>
@@ -92,6 +93,14 @@ static const struct option long_options[] = {
 	{NULL, 0, NULL, 0}
 };
 
+static const char *copyright = "Please report bugs to <bugs@netsniff-ng.org>\n"
+	"Copyright (C) 2009-2013 Daniel Borkmann <dborkma@tik.ee.ethz.ch>\n"
+	"Swiss federal institute of technology (ETH Zurich)\n"
+	"Copyright (C) 2013 Tobias Klauser <tklauser@distanz.ch>\n"
+	"License: GNU GPL version 2.0\n"
+	"This is free software: you are free to change and redistribute it.\n"
+	"There is NO WARRANTY, to the extent permitted by law.";
+
 static void signal_handler(int number)
 {
 	switch (number) {
@@ -113,7 +122,7 @@ static inline int iswireless(const struct ifstat *stats)
 
 static void __noreturn help(void)
 {
-	printf("\nifpps %s, top-like kernel networking and system statistics\n",
+	printf("ifpps %s, top-like kernel networking and system statistics\n",
 	       VERSION_STRING);
 	puts("http://www.netsniff-ng.org\n\n"
 	     "Usage: ifpps [options] || ifpps <netdev>\n"
@@ -136,29 +145,17 @@ static void __noreturn help(void)
 	     "  ifpps -lpcd wlan0 > plot.dat\n\n"
 	     "Note:\n"
 	     "  On 10G cards, RX/TX statistics are usually accumulated each > 1sec.\n"
-	     "  Thus, in those situations, it's good to use a -t of 10sec.\n\n"
-	     "Please report bugs to <bugs@netsniff-ng.org>\n"
-	     "Copyright (C) 2009-2013 Daniel Borkmann <dborkma@tik.ee.ethz.ch>\n"
-	     "Swiss federal institute of technology (ETH Zurich)\n"
-	     "Copyright (C) 2013 Tobias Klauser <tklauser@distanz.ch>\n"
-	     "License: GNU GPL version 2.0\n"
-	     "This is free software: you are free to change and redistribute it.\n"
-	     "There is NO WARRANTY, to the extent permitted by law.\n");
+	     "  Thus, in those situations, it's good to use a -t of 10sec.\n");
+	puts(copyright);
 	die();
 }
 
 static void __noreturn version(void)
 {
-	printf("\nifpps %s, Git id: %s\n", VERSION_LONG, GITVERSION);
+	printf("ifpps %s, Git id: %s\n", VERSION_LONG, GITVERSION);
 	puts("top-like kernel networking and system statistics\n"
-	     "http://www.netsniff-ng.org\n\n"
-	     "Please report bugs to <bugs@netsniff-ng.org>\n"
-	     "Copyright (C) 2009-2013 Daniel Borkmann <dborkma@tik.ee.ethz.ch>\n"
-	     "Swiss federal institute of technology (ETH Zurich)\n"
-	     "Copyright (C) 2013 Tobias Klauser <tklauser@distanz.ch>\n"
-	     "License: GNU GPL version 2.0\n"
-	     "This is free software: you are free to change and redistribute it.\n"
-	     "There is NO WARRANTY, to the extent permitted by law.\n");
+	     "http://www.netsniff-ng.org\n");
+	puts(copyright);
 	die();
 }
 
@@ -172,7 +169,7 @@ static inline int padding_from_num(int n)
 }
 
 #define STATS_ALLOC1(member)	\
-	do { stats->member = xzmalloc(cpus * sizeof(*(stats->member))); } while (0)
+	do { stats->member = xcalloc(cpus, sizeof(*(stats->member))); } while (0)
 
 static void stats_alloc(struct ifstat *stats, unsigned int cpus)
 {
@@ -452,7 +449,7 @@ static int stats_proc_system(struct ifstat *stats)
 			cpu = strtol(ptr, &ptr, 10);
 			bug_on(cpu > cpus);
 
-			if (sscanf(ptr, "%lu%lu%lu%lu%lu",
+			if (sscanf(ptr, "%"SCNu64"%"SCNu64"%"SCNu64"%"SCNu64"%"SCNu64,
 				   &stats->cpu_user[cpu],
 				   &stats->cpu_nice[cpu],
 				   &stats->cpu_sys[cpu],
@@ -730,7 +727,7 @@ static void screen_header(WINDOW *screen, const char *ifname, int *voff,
 		slprintf(machine, sizeof(machine), " %s,", uts.machine);
 
 	mvwprintw(screen, (*voff)++, 2,
-		  "%s,%s %s (%s%s), t=%lums, cpus=%u%s/%u"
+		  "%s,%s %s (%s%s), t=%"PRIu64"ms, cpus=%u%s/%u"
 		  "               ", uts.release, machine,
 		  ifname, drvinf.driver, buff, ms_interval, top_cpus,
 		  top_cpus > 0 && top_cpus < cpus ? "+1" : "", cpus);
@@ -798,27 +795,27 @@ static void screen_sys(WINDOW *screen, const struct ifstat *rel,
 		       const struct ifstat *abs, int *voff)
 {
 	mvwprintw(screen, (*voff)++, 2,
-		  "sys:  %14u cs/t "
-			"%11u procs "
-			"%11u running "
-			"%10u iowait",
+		  "sys:  %14"PRIu32" cs/t "
+			"%11"PRIu32" procs "
+			"%11"PRIu32" running "
+			"%10"PRIu32" iowait",
 		  rel->cswitch, abs->procs_total, abs->procs_run, abs->procs_iow);
 }
 
 static void screen_mem_swap(WINDOW *screen, const struct ifstat *abs, int *voff)
 {
 	mvwprintw(screen, (*voff)++, 2,
-		  "mem:  %13uM total "
-			 "%9uM used "
-			"%11uM active "
-			"%10uM inactive",
+		  "mem:  %13"PRIu64"M total "
+			 "%9"PRIu64"M used "
+			"%11"PRIu64"M active "
+			"%10"PRIu64"M inactive",
 			abs->mem_total / 1024,
 			(abs->mem_total - abs->mem_free) / 1024,
 			abs->mem_active / 1024,
 			abs->mem_inactive / 1024);
 
 	mvwprintw(screen, (*voff)++, 2,
-		  "swap:  %12uM total "
+		  "swap:  %12"PRIu64"M total "
 			  "%9uM used "
 			 "%11uM cached",
 		  abs->swap_total / 1024,
@@ -1187,25 +1184,25 @@ static void term_csv(const struct ifstat *rel, const struct ifstat *abs)
 	printf("%llu ", abs->tx_drops);
 	printf("%llu ", abs->tx_errors);
 
-	printf("%u ",  rel->cswitch);
-	printf("%lu ", abs->mem_free);
-	printf("%lu ", abs->mem_total - abs->mem_free);
-	printf("%lu ", abs->mem_total);
-	printf("%lu ", abs->swap_free);
-	printf("%lu ", abs->swap_total - abs->swap_free);
-	printf("%lu ", abs->swap_total);
-	printf("%u ",  abs->procs_total);
-	printf("%u ",  abs->procs_run);
-	printf("%u ",  abs->procs_iow);
+	printf("%"PRIu32" ",  rel->cswitch);
+	printf("%"PRIu64" ", abs->mem_free);
+	printf("%"PRIu64" ", abs->mem_total - abs->mem_free);
+	printf("%"PRIu64" ", abs->mem_total);
+	printf("%"PRIu64" ", abs->swap_free);
+	printf("%"PRIu64" ", abs->swap_total - abs->swap_free);
+	printf("%"PRIu64" ", abs->swap_total);
+	printf("%"PRIu32" ",  abs->procs_total);
+	printf("%"PRIu32" ",  abs->procs_run);
+	printf("%"PRIu32" ",  abs->procs_iow);
 
 	cpus = get_number_cpus();
 
 	for (i = 0; i < cpus; ++i) {
-		printf("%lu ", rel->cpu_user[i]);
-		printf("%lu ", rel->cpu_nice[i]);
-		printf("%lu ", rel->cpu_sys[i]);
-		printf("%lu ", rel->cpu_idle[i]);
-		printf("%lu ", rel->cpu_iow[i]);
+		printf("%"PRIu64" ", rel->cpu_user[i]);
+		printf("%"PRIu64" ", rel->cpu_nice[i]);
+		printf("%"PRIu64" ", rel->cpu_sys[i]);
+		printf("%"PRIu64" ", rel->cpu_idle[i]);
+		printf("%"PRIu64" ", rel->cpu_iow[i]);
 
 		printf("%llu ", rel->irqs[i]);
 		printf("%llu ", abs->irqs[i]);
@@ -1218,9 +1215,9 @@ static void term_csv(const struct ifstat *rel, const struct ifstat *abs)
 	}
 
 	if (iswireless(abs)) {
-		printf("%u ", rel->wifi.link_qual);
-		printf("%u ", abs->wifi.link_qual);
-		printf("%u ", abs->wifi.link_qual_max);
+		printf("%"PRIu16" ", rel->wifi.link_qual);
+		printf("%"PRIu16" ", abs->wifi.link_qual);
+		printf("%"PRIu16" ", abs->wifi.link_qual_max);
 
 		printf("%d ", rel->wifi.signal_level);
 		printf("%d ", abs->wifi.signal_level);
@@ -1237,7 +1234,7 @@ static void term_csv_header(const char *ifname, const struct ifstat *abs,
 
 	printf("# gnuplot dump (#col:description)\n");
 	printf("# networking interface: %s\n", ifname);
-	printf("# sampling interval (t): %lu ms\n", ms_interval);
+	printf("# sampling interval (t): %"PRIu64" ms\n", ms_interval);
 	printf("# %d:unixtime ", j++);
 
 	printf("%d:rx-bytes-per-t ", j++);
@@ -1424,7 +1421,7 @@ int main(int argc, char **argv)
 	stats_alloc(&stats_new, cpus);
 	stats_alloc(&stats_delta, cpus);
 
-	cpu_hits = xzmalloc(cpus * sizeof(*cpu_hits));
+	cpu_hits = xcalloc(cpus, sizeof(*cpu_hits));
 
 	if (promisc)
 		ifflags = device_enter_promiscuous_mode(ifname);

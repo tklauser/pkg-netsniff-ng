@@ -4,13 +4,14 @@
  * Subject to the GPL, version 2.
  */
 
+#include <inttypes.h>
 #include <arpa/inet.h>
 #include <asm/byteorder.h>
 #include <netinet/in.h>
 
 #include "proto.h"
+#include "protos.h"
 #include "csum.h"
-#include "dissector_eth.h"
 #include "built_in.h"
 #include "pkt_buff.h"
 
@@ -53,7 +54,7 @@ struct igmp_v1_msg {
 	uint8_t  unused; /* always zero */
 	uint16_t checksum;
 	uint32_t group_address;
-} __attribute__((packed));
+} __packed;
 
 /* igmp_v1_msg.version__type (!) */
 /* IGMP_V1_MEMBERSHIP_QUERY 0x11 */
@@ -65,7 +66,7 @@ struct igmp_v2_msg {
 	uint8_t  max_resp_time;
 	uint16_t checksum;
 	uint32_t group_address;
-} __attribute__((packed));
+} __packed;
 
 /* igmp_v2_msg.type */
 /* IGMP_V2_MEMBERSHIP_QUERY 0x11 */
@@ -90,7 +91,7 @@ struct igmp_v3_group_record {
 	uint32_t multicast_address;
 	uint32_t source_addresses[0];
 	/* auxiliary data (IGMPv3 does not define any) */
-} __attribute__((packed));
+} __packed;
 
 /* igmp_v3_group_record.record_type */
 #define IGMP_V3_MODE_IS_INCLUDE        1
@@ -107,7 +108,7 @@ struct igmp_v3_membership_report {
 	uint16_t reserved2;
 	uint16_t number_of_group_records;
 	struct igmp_v3_group_record group_records[0];
-} __attribute__((packed));
+} __packed;
 
 struct igmp_v3_membership_query {
 	uint8_t  type;
@@ -128,7 +129,7 @@ struct igmp_v3_membership_query {
 	uint8_t  qqic;
 	uint16_t number_of_sources;
 	uint32_t source_addresses[0];
-} __attribute__((packed));
+} __packed;
 
 #define IGMP_MEMBERSHIP_QUERY     0x11 /* v1/v2/v3 */
 #define IGMP_V3_MEMBERSHIP_REPORT 0x22
@@ -266,7 +267,7 @@ static void dissect_igmp_v0(struct pkt_buff *pkt)
 	tprintf(", Id (%u)", ntohs(msg->identifier));
 	inet_ntop(AF_INET, &msg->group_address, addr, sizeof(addr));
 	tprintf(", Group Addr (%s)", addr);
-	tprintf(", Access Key (0x%.16lx)", msg->access_key);
+	tprintf(", Access Key (0x%.16"PRIx64")", msg->access_key);
 	tprintf(" ]\n");
 }
 

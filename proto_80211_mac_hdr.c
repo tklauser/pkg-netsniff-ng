@@ -10,6 +10,7 @@
  * with respect to endianess (little / big)
  */
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <netinet/in.h>    /* for ntohs() */
@@ -21,6 +22,7 @@
 #include "built_in.h"
 #include "pkt_buff.h"
 #include "oui.h"
+#include "linktype.h"
 
 #define	TU		0.001024
 
@@ -771,6 +773,13 @@ struct element_vend_spec {
 	u8 specific[0];
 } __packed;
 
+struct ieee80211_radiotap_header {
+	u8 version;	/* set to 0 */
+	u8 pad;
+	u16 len;	/* entire length */
+	u32 present;	/* fields present */
+} __packed;
+
 static int8_t len_neq_error(u8 len, u8 intended)
 {
 	if(intended != len) {
@@ -874,7 +883,7 @@ static int8_t inf_reserved(struct pkt_buff *pkt, u8 *id)
 	if (reserved == NULL)
 		return 0;
 
-	tprintf("Reserved (%u, Len (%u)): ", *id, reserved->len);
+	tprintf(" Reserved (%u, Len (%u)): ", *id, reserved->len);
 
 	data = pkt_pull(pkt, reserved->len);
 	if (data == NULL)
@@ -1685,20 +1694,20 @@ static int8_t inf_ch_sw_ann(struct pkt_buff *pkt, u8 *id)
 static const char *meas_type(u8 type)
 {
 	switch (type) {
-	case   0: return "Basic";
-	case   1: return "Clear Channel assesment (CCA)";
-	case   2: return "Receive power indication (RPI) histogram";
-	case   3: return "Channel load";
-	case   4: return "Noise histogram";
-	case   5: return "Beacon";
-	case   6: return "Frame";
-	case   7: return "STA statistics";
-	case   8: return "LCI";
-	case   9: return "Transmit stream/category measurement";
-	case   10: return "Multicast diagnostics";
-	case   11: return "Location Civic";
-	case   12: return "Location Identifier";
-	case   13 ... 255: return "Reserved";
+	case 0:  return "Basic";
+	case 1:  return "Clear Channel assesment (CCA)";
+	case 2:  return "Receive power indication (RPI) histogram";
+	case 3:  return "Channel load";
+	case 4:  return "Noise histogram";
+	case 5:  return "Beacon";
+	case 6:  return "Frame";
+	case 7:  return "STA statistics";
+	case 8:  return "LCI";
+	case 9:  return "Transmit stream/category measurement";
+	case 10: return "Multicast diagnostics";
+	case 11: return "Location Civic";
+	case 12: return "Location Identifier";
+	default: return "Reserved";
 	}
 }
 
@@ -1741,7 +1750,7 @@ static int8_t inf_meas_req(struct pkt_buff *pkt, u8 *id)
 			}
 
 			tprintf("Ch Nr: %uus, ", basic->ch_nr);
-			tprintf("Meas Start Time: %lu, ",
+			tprintf("Meas Start Time: %"PRIu64", ",
 				    le64_to_cpu(basic->start));
 			tprintf("Meas Duration: %fs",
 				    le16_to_cpu(basic->dur) * TU);
@@ -1762,7 +1771,7 @@ static int8_t inf_meas_req(struct pkt_buff *pkt, u8 *id)
 			}
 
 			tprintf("Ch Nr: %uus, ", cca->ch_nr);
-			tprintf("Meas Start Time: %lu, ",
+			tprintf("Meas Start Time: %"PRIu64", ",
 				    le64_to_cpu(cca->start));
 			tprintf("Meas Duration: %fs",
 				    le16_to_cpu(cca->dur) * TU);
@@ -1782,7 +1791,7 @@ static int8_t inf_meas_req(struct pkt_buff *pkt, u8 *id)
 			}
 
 			tprintf("Ch Nr: %uus, ", rpi->ch_nr);
-			tprintf("Meas Start Time: %lu, ",
+			tprintf("Meas Start Time: %"PRIu64", ",
 				    le64_to_cpu(rpi->start));
 			tprintf("Meas Duration: %fs",
 				    le16_to_cpu(rpi->dur) * TU);
@@ -2119,7 +2128,7 @@ static int8_t inf_meas_rep(struct pkt_buff *pkt, u8 *id)
 			}
 
 			tprintf("Ch Nr: %uus, ", basic->ch_nr);
-			tprintf("Meas Start Time: %lu, ",
+			tprintf("Meas Start Time: %"PRIu64", ",
 				    le64_to_cpu(basic->start));
 			tprintf("Meas Duration: %fs",
 				    le16_to_cpu(basic->dur) * TU);
@@ -2140,7 +2149,7 @@ static int8_t inf_meas_rep(struct pkt_buff *pkt, u8 *id)
 			}
 
 			tprintf("Ch Nr: %uus, ", cca->ch_nr);
-			tprintf("Meas Start Time: %lu, ",
+			tprintf("Meas Start Time: %"PRIu64", ",
 				    le64_to_cpu(cca->start));
 			tprintf("Meas Duration: %fs",
 				    le16_to_cpu(cca->dur) * TU);
@@ -2160,7 +2169,7 @@ static int8_t inf_meas_rep(struct pkt_buff *pkt, u8 *id)
 			}
 
 			tprintf("Ch Nr: %uus, ", rpi->ch_nr);
-			tprintf("Meas Start Time: %lu, ",
+			tprintf("Meas Start Time: %"PRIu64", ",
 				    le64_to_cpu(rpi->start));
 			tprintf("Meas Duration: %fs",
 				    le16_to_cpu(rpi->dur) * TU);
@@ -2569,68 +2578,101 @@ static int8_t inf_ht_cap(struct pkt_buff *pkt, u8 *id)
 	beam_cap = le32_to_cpu(ht_cap->beam_cap);
 	ext_cap = le16_to_cpu(ht_cap->ext_cap);
 
-	tprintf(" HT Capabilities (%u, Len(%u)): ", *id, ht_cap->len);
+	tprintf(" HT Capabilities (%u, Len(%u)):\n", *id, ht_cap->len);
 	if (len_neq_error(ht_cap->len, 26))
 		return 0;
-	tprintf("Info (LDCP Cod Cap (%u), Supp Ch Width Set (%u),"
-		" SM Pwr Save(%u), HT-Greenfield (%u), Short GI for 20/40 MHz"
-		" (%u/%u), Tx/Rx STBC (%u/%u), HT-Delayed Block Ack (%u),"
-		" Max A-MSDU Len (%u), DSSS/CCK Mode in 40 MHz (%u),"
-		" Res (0x%x), Forty MHz Intol (%u), L-SIG TXOP Protection Supp"
-		" (%u)), ", ht_cap->ldpc, ht_cap->supp_width,
-		ht_cap->sm_pwr, ht_cap->ht_green, ht_cap->gi_20mhz,
-		ht_cap->gi_40mhz, ht_cap->tx_stbc, ht_cap->rx_stbc,
-		ht_cap->ht_ack, ht_cap->max_msdu_length, ht_cap->dsss_ck_mode,
-		ht_cap->res, ht_cap->forty_int, ht_cap->prot_supp);
-	tprintf("A-MPDU Params (Max Len Exp (%u), Min Start Spacing (%u),"
-		" Res (0x%x)), ", ht_cap->param >> 6, (ht_cap->param >> 3) & 0x7,
-		ht_cap->param & 0x07);
-	tprintf("Supp MCS Set (Rx MCS Bitmask (0x%x%x%x%x%x%x%x%x%x%x),"
-		" Res (0x%x), Rx High Supp Data Rate (%u), Res (0x%x),"
-		" Tx MCS Set Def (%u), Tx Rx MCS Set Not Eq (%u),"
-		" Tx Max Number Spat Str Supp (%u),"
-		" Tx Uneq Mod Supp (%u), Res (0x%x)), ",
-		ht_cap->bitmask1, ht_cap->bitmask2, ht_cap->bitmask3,
-		ht_cap->bitmask4, ht_cap->bitmask5, ht_cap->bitmask6,
-		ht_cap->bitmask7, ht_cap->bitmask8, ht_cap->bitmask9,
-		ht_cap->bitmask10_res >> 3, ht_cap->bitmask10_res & 0x7,
-		le16_to_cpu(ht_cap->supp_rate_res) >> 6,
-		le16_to_cpu(ht_cap->supp_rate_res) & 0x3F,
-		tx_param_res >> 31, (tx_param_res >> 30) & 1,
-		(tx_param_res >> 28) & 3, (tx_param_res >> 27) & 1,
-		tx_param_res & 0x7FFFFFF);
-	tprintf("Ext Cap (PCO (%u), PCO Trans Time (%u), Res (0x%x),"
-		" MCS Feedb (%u), +HTC Supp (%u), RD Resp (%u), Res (0x%x)), ",
-		ext_cap >> 15, (ext_cap >> 13) & 3, (ext_cap >> 8) & 0x1F,
-		(ext_cap >> 6) & 3, (ext_cap >> 5) & 1, (ext_cap >> 4) & 1,
-		ext_cap & 0xF);
-	tprintf("Transm Beamf (Impl Transm Beamf Rec Cap (%u),"
-		" Rec/Transm Stagg Sound Cap (%u/%u),"
-		" Rec/Trans NDP Cap (%u/%u), Impl Transm Beamf Cap (%u),"
-		" Cal (%u), Expl CSI Transm Beamf Cap (%u),"
-		" Expl Noncmpr/Compr Steering Cap (%u/%u),"
-		" Expl Trans Beamf CSI Feedb (%u),"
-		" Expl Noncmpr/Cmpr Feedb Cap (%u/%u),"
-		" Min Grpg (%u), CSI Num Beamf Ant Supp (%u),"
-		" Noncmpr/Cmpr Steering Nr Beamf Ant Supp (%u/%u),"
-		" CSI Max Nr Rows Beamf Supp (%u),"
-		" Ch Estim Cap (%u), Res (0x%x)), ",
-		beam_cap >> 31, (beam_cap >> 30) & 1, (beam_cap >> 29) & 1,
-		(beam_cap >> 28) & 1, (beam_cap >> 27) & 1, (beam_cap >> 26) & 1,
-		(beam_cap >> 24) & 3, (beam_cap >> 23) & 1, (beam_cap >> 22) & 1,
-		(beam_cap >> 21) & 1, (beam_cap >> 19) & 3, (beam_cap >> 17) & 3,
-		(beam_cap >> 15) & 3, (beam_cap >> 13) & 3, (beam_cap >> 11) & 3,
-		(beam_cap >> 9) & 3, (beam_cap >> 7) & 3, (beam_cap >> 5) & 3,
-		(beam_cap >> 3) & 3, beam_cap & 7);
-	tprintf("ASEL (Ant Select Cap (%u),"
-		" Expl CSI Feedb Based Transm ASEL Cap (%u),"
-		" Ant Indic Feedb Based Transm ASEL Cap (%u),"
-		" Expl CSI Feedb Cap (%u), Ant Indic Feedb Cap (%u),"
-		" Rec ASEL Cap (%u), Transm Sound PPDUs Cap (%u), Res (0x%x))",
-		ht_cap->asel_cap >> 7, (ht_cap->asel_cap >> 6) & 1,
-		(ht_cap->asel_cap >> 5) & 1, (ht_cap->asel_cap >> 4) & 1,
-		(ht_cap->asel_cap >> 3) & 1, (ht_cap->asel_cap >> 2) & 1,
-		(ht_cap->asel_cap >> 1) & 1, ht_cap->asel_cap & 1);
+
+	tprintf("\t\t Info:\n");
+	tprintf("\t\t\t LDCP Cod Cap (%u)\n", ht_cap->ldpc);
+	tprintf("\t\t\t Supp Ch Width Set (%u)\n", ht_cap->supp_width);
+	tprintf("\t\t\t SM Pwr Save(%u)\n", ht_cap->sm_pwr);
+	tprintf("\t\t\t HT-Greenfield (%u)\n", ht_cap->ht_green);
+	tprintf("\t\t\t Short GI for 20/40 MHz (%u/%u)\n", ht_cap->gi_20mhz,
+			ht_cap->gi_40mhz);
+	tprintf("\t\t\t Tx/Rx STBC (%u/%u)\n", ht_cap->tx_stbc,
+			ht_cap->rx_stbc);
+	tprintf("\t\t\t HT-Delayed Block Ack (%u)\n", ht_cap->ht_ack);
+	tprintf("\t\t\t Max A-MSDU Len (%u)\n", ht_cap->max_msdu_length);
+	tprintf("\t\t\t DSSS/CCK Mode in 40 MHz (%u)\n",
+			ht_cap->dsss_ck_mode);
+	tprintf("\t\t\t Res (0x%x)\n", ht_cap->res);
+	tprintf("\t\t\t Forty MHz Intol (%u)\n", ht_cap->forty_int);
+	tprintf("\t\t\t L-SIG TXOP Protection Supp (%u)\n",
+			ht_cap->prot_supp);
+
+	tprintf("\t\t A-MPDU Params:\n");
+	tprintf("\t\t\t Max Len Exp (%u)\n", ht_cap->param >> 6);
+	tprintf("\t\t\t Min Start Spacing (%u)\n",
+			(ht_cap->param >> 3) & 0x7);
+	tprintf("\t\t\t Res (0x%x)\n", ht_cap->param & 0x07);
+
+	tprintf("\t\t Supp MCS Set:\n");
+	tprintf("\t\t\t Rx MCS Bitmask (0x%x%x%x%x%x%x%x%x%x%x)\n",
+			ht_cap->bitmask1, ht_cap->bitmask2, ht_cap->bitmask3,
+			ht_cap->bitmask4, ht_cap->bitmask5, ht_cap->bitmask6,
+			ht_cap->bitmask7, ht_cap->bitmask8, ht_cap->bitmask9,
+			ht_cap->bitmask10_res >> 3);
+	tprintf("\t\t\t Res (0x%x)\n", ht_cap->bitmask10_res & 0x7);
+	tprintf("\t\t\t Rx High Supp Data Rate (%u)\n",
+			le16_to_cpu(ht_cap->supp_rate_res) >> 6);
+	tprintf("\t\t\t Res (0x%x)\n",
+			le16_to_cpu(ht_cap->supp_rate_res) & 0x3F);
+	tprintf("\t\t\t Tx MCS Set Def (%u)\n", tx_param_res >> 31);
+	tprintf("\t\t\t Tx Rx MCS Set Not Eq (%u)\n",
+			(tx_param_res >> 30) & 1);
+	tprintf("\t\t\t Tx Max Number Spat Str Supp (%u)\n",
+			(tx_param_res >> 28) & 3);
+	tprintf("\t\t\t Tx Uneq Mod Supp (%u)\n", (tx_param_res >> 27) & 1);
+	tprintf("\t\t\t Res (0x%x)\n", tx_param_res & 0x7FFFFFF);
+
+	tprintf("\t\t Ext Cap:\n");
+	tprintf("\t\t\t PCO (%u)\n", ext_cap >> 15);
+	tprintf("\t\t\t PCO Trans Time (%u)\n", (ext_cap >> 13) & 3);
+	tprintf("\t\t\t Res (0x%x)\n", (ext_cap >> 8) & 0x1F);
+	tprintf("\t\t\t MCS Feedb (%u)\n", (ext_cap >> 6) & 3);
+	tprintf("\t\t\t +HTC Supp (%u)\n", (ext_cap >> 5) & 1);
+	tprintf("\t\t\t RD Resp (%u)\n", (ext_cap >> 4) & 1);
+	tprintf("\t\t\t Res (0x%x)\n", ext_cap & 0xF);
+
+	tprintf("\t\t Transm Beamf:\n");
+	tprintf("\t\t\t Impl Transm Beamf Rec Cap (%u)\n", beam_cap >> 31);
+	tprintf("\t\t\t Rec/Transm Stagg Sound Cap (%u/%u)\n",
+			(beam_cap >> 30) & 1, (beam_cap >> 29) & 1);
+	tprintf("\t\t\t Rec/Trans NDP Cap (%u/%u)\n",
+			(beam_cap >> 28) & 1, (beam_cap >> 27) & 1);
+	tprintf("\t\t\t Impl Transm Beamf Cap (%u)\n", (beam_cap >> 26) & 1);
+	tprintf("\t\t\t Cal (%u)\n", (beam_cap >> 24) & 3);
+	tprintf("\t\t\t Expl CSI Transm Beamf Cap (%u)\n",
+			(beam_cap >> 23) & 1);
+	tprintf("\t\t\t Expl Noncmpr/Compr Steering Cap (%u/%u)\n",
+			(beam_cap >> 22) & 1, (beam_cap >> 21) & 1);
+	tprintf("\t\t\t Expl Trans Beamf CSI Feedb (%u)\n",
+			(beam_cap >> 19) & 3);
+	tprintf("\t\t\t Expl Noncmpr/Cmpr Feedb Cap (%u/%u)\n",
+			(beam_cap >> 17) & 3, (beam_cap >> 15) & 3);
+	tprintf("\t\t\t Min Grpg (%u)\n", (beam_cap >> 13) & 3);
+	tprintf("\t\t\t CSI Num Beamf Ant Supp (%u)\n", (beam_cap >> 11) & 3);
+	tprintf("\t\t\t Noncmpr/Cmpr Steering Nr Beamf Ant Supp (%u/%u)\n",
+			(beam_cap >> 9) & 3, (beam_cap >> 7) & 3);
+	tprintf("\t\t\t CSI Max Nr Rows Beamf Supp (%u)\n",
+			(beam_cap >> 5) & 3);
+	tprintf("\t\t\t Ch Estim Cap (%u)\n", (beam_cap >> 3) & 3);
+	tprintf("\t\t\t Res (0x%x)\n", beam_cap & 7);
+
+	tprintf("\t\t ASEL:\n");
+	tprintf("\t\t\t Ant Select Cap (%u)\n", ht_cap->asel_cap >> 7);
+	tprintf("\t\t\t Expl CSI Feedb Based Transm ASEL Cap (%u)\n",
+			(ht_cap->asel_cap >> 6) & 1);
+	tprintf("\t\t\t Ant Indic Feedb Based Transm ASEL Cap (%u)\n",
+			(ht_cap->asel_cap >> 5) & 1);
+	tprintf("\t\t\t Expl CSI Feedb Cap (%u)\n",
+			(ht_cap->asel_cap >> 4) & 1);
+	tprintf("\t\t\t Ant Indic Feedb Cap (%u)\n",
+			(ht_cap->asel_cap >> 3) & 1);
+	tprintf("\t\t\t Rec ASEL Cap (%u)\n", (ht_cap->asel_cap >> 2) & 1);
+	tprintf("\t\t\t Transm Sound PPDUs Cap (%u)\n",
+			(ht_cap->asel_cap >> 1) & 1);
+	tprintf("\t\t\t Res (0x%x)", ht_cap->asel_cap & 1);
 
 	return 1;
 }
@@ -2853,22 +2895,22 @@ static int8_t inf_elements(struct pkt_buff *pkt)
 	return 0;
 }
 
-#define	ESS		0b0000000000000001
-#define	IBSS		0b0000000000000010
-#define	CF_Pollable	0b0000000000000100
-#define	CF_Poll_Req	0b0000000000001000
-#define	Privacy		0b0000000000010000
-#define	Short_Pre	0b0000000000100000
-#define	PBCC		0b0000000001000000
-#define	Ch_Agility	0b0000000010000000
-#define	Spec_Mgmt	0b0000000100000000
-#define	QoS		0b0000001000000000
-#define	Short_Slot_t	0b0000010000000000
-#define	APSD		0b0000100000000000
-#define	Radio_Meas	0b0001000000000000
-#define	DSSS_OFDM	0b0010000000000000
-#define	Del_Block_ACK	0b0100000000000000
-#define	Imm_Block_ACK	0b1000000000000000
+#define	ESS		0x0001
+#define	IBSS		0x0002
+#define	CF_Pollable	0x0004
+#define	CF_Poll_Req	0x0008
+#define	Privacy		0x0010
+#define	Short_Pre	0x0020
+#define	PBCC		0x0040
+#define	Ch_Agility	0x0080
+#define	Spec_Mgmt	0x0100
+#define	QoS		0x0200
+#define	Short_Slot_t	0x0400
+#define	APSD		0x0800
+#define	Radio_Meas	0x1000
+#define	DSSS_OFDM	0x2000
+#define	Del_Block_ACK	0x4000
+#define	Imm_Block_ACK	0x8000
 
 static int8_t cap_field(u16 cap_inf)
 {
@@ -2908,8 +2950,19 @@ static int8_t cap_field(u16 cap_inf)
 	return 1;
 }
 
+static void print_inf_elements(struct pkt_buff *pkt)
+{
+	if (pkt_len(pkt)) {
+		do {
+			if (pkt_len(pkt))
+				tprintf("\n\tIE:");
+
+		} while (inf_elements(pkt));
+	}
+}
+
 /* Management Dissectors */
-static int8_t beacon(struct pkt_buff *pkt)
+static int8_t mgmt_beacon_dissect(struct pkt_buff *pkt)
 {
 	struct ieee80211_mgmt_beacon *beacon;
 
@@ -2918,21 +2971,27 @@ static int8_t beacon(struct pkt_buff *pkt)
 	if (beacon == NULL)
 		return 0;
 
-	tprintf("Timestamp 0x%.16lx, ", le64_to_cpu(beacon->timestamp));
+	tprintf("Timestamp 0x%.16"PRIx64", ", le64_to_cpu(beacon->timestamp));
 	tprintf("Beacon Interval (%fs), ", le16_to_cpu(beacon->beacon_int)*TU);
 	tprintf("Capabilities (0x%x <->", le16_to_cpu(beacon->capab_info));
 	cap_field(le16_to_cpu(beacon->capab_info));
 	tprintf(")");
 
-	if(pkt_len(pkt)) {
-		tprintf("\n\tParameters:");
-		while (inf_elements(pkt)) {
-			tprintf("\n\t");
-		}
-	}
+	print_inf_elements(pkt);
 
-	if(pkt_len(pkt))
+	if (pkt_len(pkt))
 		return 0;
+
+	return 1;
+}
+
+static int8_t mgmt_probe_request_dissect(struct pkt_buff *pkt)
+{
+	print_inf_elements(pkt);
+
+	if (pkt_len(pkt))
+		return 0;
+
 	return 1;
 }
 
@@ -3008,46 +3067,43 @@ static const char *mgt_sub(u8 subtype, struct pkt_buff *pkt,
 		seq_ctrl & 0xf, seq_ctrl >> 4);
 
 	switch (subtype) {
-	case 0b0000:
+	case 0x0:
 		*get_content = mgmt_unimplemented;
 		return "Association Request";
-	case 0b0001:
+	case 0x1:
 		*get_content = mgmt_unimplemented;
 		return "Association Response";
-	case 0b0010:
+	case 0x2:
 		*get_content = mgmt_unimplemented;
 		return "Reassociation Request";
-	case 0b0011:
+	case 0x3:
 		*get_content = mgmt_unimplemented;
 		return "Reassociation Response";
-	case 0b0100:
-		*get_content = mgmt_unimplemented;
+	case 0x4:
+		*get_content = mgmt_probe_request_dissect;
 		return "Probe Request";
-	case 0b0101:
-		*get_content = mgmt_unimplemented;
+	case 0x5:
+		/* Probe Response is very similar to Beacon except some IEs */
+		*get_content = mgmt_beacon_dissect;
 		return "Probe Response";
-	case 0b1000:
-		*get_content = beacon;
+	case 0x8:
+		*get_content = mgmt_beacon_dissect;
 		return "Beacon";
-	case 0b1001:
+	case 0x9:
 		*get_content = mgmt_unimplemented;
 		return "ATIM";
-	case 0b1010:
+	case 0xA:
 		*get_content = mgmt_unimplemented;
 		return "Disassociation";
-	case 0b1011:
+	case 0xB:
 		*get_content = mgmt_unimplemented;
 		return "Authentication";
-	case 0b1100:
+	case 0xC:
 		*get_content = mgmt_unimplemented;
 		return "Deauthentication";
-	case 0b0110 ... 0b0111:
-	case 0b1101 ... 0b1111:
-		*get_content = NULL;
-		return "Reserved";
 	default:
 		*get_content = NULL;
-		return "Management SubType unknown";
+		return "Reserved";
 	}
 }
 
@@ -3055,29 +3111,27 @@ static const char *ctrl_sub(u8 subtype, struct pkt_buff *pkt __maybe_unused,
 			    int8_t (**get_content)(struct pkt_buff *pkt))
 {
 	switch (subtype) {
-	case 0b1010:
+	case 0xA:
 		*get_content = ctrl_unimplemented;
 		return "PS-Poll";
-	case 0b1011:
+	case 0xB:
 		*get_content = ctrl_unimplemented;
 		return "RTS";
-	case 0b1100:
+	case 0xC:
 		*get_content = ctrl_unimplemented;
 		return "CTS";
-	case 0b1101:
+	case 0xD:
 		*get_content = ctrl_unimplemented;
 		return "ACK";
-	case 0b1110:
+	case 0xE:
 		*get_content = ctrl_unimplemented;
 		return "CF End";
-	case 0b1111:
+	case 0xF:
 		*get_content = ctrl_unimplemented;
 		return "CF End + CF-ACK";
-	case 0b0000 ... 0b1001:
+	default:
 		*get_content = NULL;
 		return "Reserved";
-	default:
-		return "Control SubType unknown";
 	}
 }
 
@@ -3085,36 +3139,33 @@ static const char *data_sub(u8 subtype, struct pkt_buff *pkt __maybe_unused,
 		 	    int8_t (**get_content)(struct pkt_buff *pkt))
 {
 	switch (subtype) {
-	case 0b0000:
+	case 0x0:
 		*get_content = data_unimplemented;
 		return "Data";
-	case 0b0001:
+	case 0x1:
 		*get_content = data_unimplemented;
 		return "Data + CF-ACK";
-	case 0b0010:
+	case 0x2:
 		*get_content = data_unimplemented;
 		return "Data + CF-Poll";
-	case 0b0011:
+	case 0x3:
 		*get_content = data_unimplemented;
 		return "Data + CF-ACK + CF-Poll";
-	case 0b0100:
+	case 0x4:
 		*get_content = data_unimplemented;
 		return "Null";
-	case 0b0101:
+	case 0x5:
 		*get_content = data_unimplemented;
 		return "CF-ACK";
-	case 0b0110:
+	case 0x6:
 		*get_content = data_unimplemented;
 		return "CF-Poll";
-	case 0b0111:
+	case 0x7:
 		*get_content = data_unimplemented;
 		return "CF-ACK + CF-Poll";
-	case 0b1000 ... 0b1111:
-		*get_content = NULL;
-		return "Reserved";
 	default:
 		*get_content = NULL;
-		return "Data SubType unknown";
+		return "Reserved";
 	}
 }
 
@@ -3123,16 +3174,16 @@ frame_control_type(u8 type, const char *(**get_subtype)(u8 subtype,
 		   struct pkt_buff *pkt, int8_t (**get_content)(struct pkt_buff *pkt)))
 {
 	switch (type) {
-	case 0b00:
+	case 0x0:
 		*get_subtype = mgt_sub;
 		return "Management";
-	case 0b01:
+	case 0x1:
 		*get_subtype = ctrl_sub;
 		return "Control";
-	case 0b10:
+	case 0x2:
 		*get_subtype = data_sub;
 		return "Data";
-	case 0b11:
+	case 0x3:
 		*get_subtype = NULL;
 		return "Reserved";
 	default:
@@ -3149,8 +3200,23 @@ static void ieee80211(struct pkt_buff *pkt)
 	const char *subtype = NULL;
 	struct ieee80211_frm_ctrl *frm_ctrl;
 
-	frm_ctrl = (struct ieee80211_frm_ctrl *)
-			pkt_pull(pkt, sizeof(*frm_ctrl));
+	if (pkt->link_type == LINKTYPE_IEEE802_11_RADIOTAP) {
+		struct ieee80211_radiotap_header *rtap;
+
+		rtap = (struct ieee80211_radiotap_header *)pkt_pull(pkt,
+				sizeof(*rtap));
+		if (rtap == NULL)
+			return;
+
+		tprintf(" [ Radiotap ");
+		tprintf("Version (%u), ", rtap->version);
+		tprintf("Length (%u), ", le16_to_cpu(rtap->len));
+		tprintf("Flags (0x%08x) ]\n", le32_to_cpu(rtap->present));
+
+		pkt_pull(pkt, le16_to_cpu(rtap->len) - sizeof(*rtap));
+	}
+
+	frm_ctrl = (struct ieee80211_frm_ctrl *)pkt_pull(pkt, sizeof(*frm_ctrl));
 	if (frm_ctrl == NULL)
 		return;
 
@@ -3191,7 +3257,7 @@ static void ieee80211(struct pkt_buff *pkt)
 
 	tprintf("\n");
 
-//	pkt_set_proto(pkt, &ieee802_lay2, ntohs(eth->h_proto));
+//	pkt_set_dissector(pkt, &ieee802_lay2, ntohs(eth->h_proto));
 }
 
 static void ieee80211_less(struct pkt_buff *pkt __maybe_unused)

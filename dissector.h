@@ -12,9 +12,11 @@
 #include <sys/socket.h>
 #include <linux/if_packet.h>
 #include <linux/if.h>
+#include <netlink/msg.h>
 
 #include "ring.h"
 #include "tprintf.h"
+#include "linktype.h"
 
 #define PRINT_NORM		0
 #define PRINT_LESS		1
@@ -26,7 +28,6 @@
 extern char *if_indextoname(unsigned ifindex, char *ifname);
 
 static const char * const packet_types[256] = {
-	[0 ... 255]		=	"?",  /* Unknown */
 	[PACKET_HOST]		=	"<",  /* Incoming */
 	[PACKET_BROADCAST]	=	"B",  /* Broadcast */
 	[PACKET_MULTICAST]	=	"M",  /* Multicast */
@@ -48,42 +49,63 @@ static inline const char *__show_ts_source(uint32_t status)
 		return "";
 }
 
-static inline void __show_frame_hdr(struct sockaddr_ll *s_ll,
-				    void *raw, int mode, bool v3)
+static inline void __show_frame_hdr(uint8_t *packet, size_t len, int linktype,
+				    struct sockaddr_ll *s_ll, void *raw_hdr,
+				    int mode, bool v3, unsigned long count)
 {
 	char tmp[IFNAMSIZ];
 	union tpacket_uhdr hdr;
+	uint8_t pkttype = s_ll->sll_pkttype;
+	bool is_nl;
 
 	if (mode == PRINT_NONE)
 		return;
 
-	hdr.raw = raw;
+	/*
+	 * If we're capturing on nlmon0, all packets will have sll_pkttype set
+	 * to PACKET_OUTGOING, but we actually want PACKET_USER/PACKET_KERNEL as
+	 * it originally was set in the kernel. Thus, use nlmsghdr->nlmsg_pid to
+	 * restore the type.
+	 */
+	is_nl = (linktype == LINKTYPE_NETLINK && len >= sizeof(struct nlmsghdr));
+	if (is_nl && pkttype == PACKET_OUTGOING) {
+		struct nlmsghdr *hdr = (struct nlmsghdr *) packet;
+		pkttype = hdr->nlmsg_pid == 0 ? PACKET_KERNEL : PACKET_USER;
+	}
+
+	hdr.raw = raw_hdr;
 	switch (mode) {
 	case PRINT_LESS:
-		tprintf("%s %s %u",
-			packet_types[s_ll->sll_pkttype] ? : "?",
+		tprintf("%s %s %u #%lu",
+			packet_types[pkttype] ? : "?",
 			if_indextoname(s_ll->sll_ifindex, tmp) ? : "?",
-			v3 ? hdr.h3->tp_len : hdr.h2->tp_len);
+			tpacket_uhdr(hdr, tp_len, v3),
+			count);
 		break;
 	default:
-		tprintf("%s %s %u %us.%uns %s\n",
-			packet_types[s_ll->sll_pkttype] ? : "?",
+		tprintf("%s %s %u %us.%uns #%lu %s\n",
+			packet_types[pkttype] ? : "?",
 			if_indextoname(s_ll->sll_ifindex, tmp) ? : "?",
-			v3 ? hdr.h3->tp_len : hdr.h2->tp_len,
-			v3 ? hdr.h3->tp_sec : hdr.h2->tp_sec,
-			v3 ? hdr.h3->tp_nsec : hdr.h2->tp_nsec,
+			tpacket_uhdr(hdr, tp_len, v3),
+			tpacket_uhdr(hdr, tp_sec, v3),
+			tpacket_uhdr(hdr, tp_nsec, v3),
+			count,
 			v3 ? "" : __show_ts_source(hdr.h2->tp_status));
 		break;
 	}
 }
 
-static inline void show_frame_hdr(struct frame_map *hdr, int mode)
+static inline void show_frame_hdr(uint8_t *packet, size_t len, int linktype,
+				  struct frame_map *hdr, int mode,
+				  unsigned long count)
 {
-	__show_frame_hdr(&hdr->s_ll, &hdr->tp_h, mode, false);
+	__show_frame_hdr(packet, len, linktype, &hdr->s_ll, &hdr->tp_h, mode,
+			 false, count);
 }
 
 extern void dissector_init_all(int fnttype);
-extern void dissector_entry_point(uint8_t *packet, size_t len, int linktype, int mode);
+extern void dissector_entry_point(uint8_t *packet, size_t len, int linktype,
+				  int mode, uint16_t proto);
 extern void dissector_cleanup_all(void);
 extern int dissector_set_print_type(void *ptr, int type);
 

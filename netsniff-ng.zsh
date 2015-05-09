@@ -35,6 +35,9 @@ _interfaces () {
 _arguments -s -S \
     "(-i -d --dev --in)"{-i,-d,--dev,--in}"[Input source as netdev, pcap or pcap stdin]:input:_interfaces" \
     "(-o --out)"{-o,--out}"[Output sink as netdev, pcap, directory, trafgen, or stdout]::_gnu_generic" \
+    "(-C --fanout-group)"{-C,--fanout-group}"[Join packet fanout group]" \
+    "(-K --fanout-type)"{-K,--fanout-type}"[Apply fanout discipline: hash|lb|cpu|rnd|roll|qm]" \
+    "(-L --fanout-opts)"{-L,--fanout-opts}"[Additional fanout options: defrag|roll]" \
     "(-f --filter)"{-f,--filter}"[Use BPF filter file from bpfc or tcpdump-like expression]" \
     "(-t --type)"{-t,--type}"[Filter type]:filter:(host broadcast multicast others outgoing)" \
     "(-F --interval)"{-F,--interval}"[Dump interval if -o is a dir: <num>KiB/MiB/GiB/s/sec/min/hrs]:interval:_gnu_generic" \
@@ -47,6 +50,7 @@ _arguments -s -S \
     "(-B --dump-bpf)"{-B,--dump-bpf}"[Dump generated BPF assembly]" \
     "(-r --rand)"{-r,--rand}"[Randomize packet forwarding order (dev->dev)]" \
     "(-M --no-promisc)"{-M,--no-promisc}"[No promiscuous mode for netdev]" \
+    "(-N --no-hwtimestamp)"{-N,--no-hwtimestamp}"[Disable hardware timestamping]" \
     "(-A --no-sock-mem)"{-A,--no-sock-mem}"[Don\'t tune core socket memory]" \
     "(-m --mmap)"{-m,--mmap}"[Mmap(2) pcap file i.e., for replaying pcaps]" \
     "(-G --sg)"{-G,--sg}"[Scatter/gather pcap file I/O]" \

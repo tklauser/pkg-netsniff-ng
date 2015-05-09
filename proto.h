@@ -11,14 +11,13 @@
 #include <ctype.h>
 #include <stdint.h>
 
-#include "hash.h"
 #include "tprintf.h"
 
 struct pkt_buff;
 
 struct protocol {
 	/* Needs to be filled out by user */
-	unsigned int key;
+	const unsigned int key;
 	void (*print_full)(struct pkt_buff *pkt);
 	void (*print_less)(struct pkt_buff *pkt);
 	/* Used by program logic */

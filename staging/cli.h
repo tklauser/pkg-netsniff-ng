@@ -59,6 +59,7 @@ struct cli_def *gcli;
 char mz_username[32];
 char mz_password[32];
 char mz_enable[32];
+char mz_listen_addr[16];
 int mz_port;
 struct mops *clipkt; // actual packet used by CLI thread
 	
@@ -78,10 +79,10 @@ int cli_debug;
 ///////////////////////////////////////////////////////////////////////////////
 // Prototypes
 
-void mz_cli_init();
+void mz_cli_init(void);
 int cli_read_cfg(char *str);
 int mz_def16 (char *def, u_int16_t val, char *str256);
-int cli();
+int cli(void);
 
 int debug_all (struct cli_def *cli, const char *command, char *argv[], int argc);
 int debug_packet (struct cli_def *cli, const char *command, char *argv[], int argc);

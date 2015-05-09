@@ -44,7 +44,7 @@ static void dissect_routinghdr_type_0(struct pkt_buff *pkt,
 		return;
 
 	if (less) {
-		tprintf("Addresses (%lu)", *data_len / sizeof(struct in6_addr));
+		tprintf("Addresses (%zu)", *data_len / sizeof(struct in6_addr));
 		return;
 	}
 
@@ -118,7 +118,7 @@ static void routing(struct pkt_buff *pkt)
 		return;
 
 	pkt_pull(pkt, data_len);
-	pkt_set_proto(pkt, &eth_lay3, routing->h_next_header);
+	pkt_set_dissector(pkt, &eth_lay3, routing->h_next_header);
 }
 
 static void routing_less(struct pkt_buff *pkt)
@@ -152,7 +152,7 @@ static void routing_less(struct pkt_buff *pkt)
 		return;
 
 	pkt_pull(pkt, data_len);
-	pkt_set_proto(pkt, &eth_lay3, routing->h_next_header);
+	pkt_set_dissector(pkt, &eth_lay3, routing->h_next_header);
 }
 
 struct protocol ipv6_routing_ops = {

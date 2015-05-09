@@ -26,6 +26,10 @@
 #include "dev.h"
 #include "config.h"
 
+#ifndef POLLRDNORM
+# define POLLRDNORM	0x0040
+#endif
+
 union tpacket_uhdr {
 	struct tpacket_hdr  *h1;
 	struct tpacket2_hdr *h2;
@@ -34,6 +38,14 @@ union tpacket_uhdr {
 #endif
 	void *raw;
 };
+
+#ifdef HAVE_TPACKET3
+#define tpacket_uhdr(hdr, member, v3)	\
+	((v3) ? ((hdr).h3)->member : ((hdr).h2)->member)
+#else
+#define tpacket_uhdr(hdr, member, v3)	\
+	(((hdr).h2)->member)
+#endif /* HAVE_TPACKET3 */
 
 struct frame_map {
 	struct tpacket2_hdr tp_h __aligned_tpacket;
@@ -67,7 +79,7 @@ static inline void next_rnd_slot(unsigned int *it, struct ring *ring)
 	*it = rand() % ring->layout.tp_frame_nr;
 }
 
-static inline unsigned int ring_size(char *ifname, unsigned int size)
+static inline size_t ring_size(const char *ifname, size_t size)
 {
 	if (size > 0)
 		return size;
@@ -132,12 +144,16 @@ static inline void set_sockopt_tpacket_v2(int sock)
 	__set_sockopt_tpacket(sock, TPACKET_V2);
 }
 
+#ifdef HAVE_TPACKET3
 static inline void set_sockopt_tpacket_v3(int sock)
 {
-#ifdef HAVE_TPACKET3
 	__set_sockopt_tpacket(sock, TPACKET_V3);
-#endif
 }
+#else
+static inline void set_sockopt_tpacket_v3(int sock __maybe_unused)
+{
+}
+#endif
 
 static inline int get_sockopt_tpacket(int sock)
 {

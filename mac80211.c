@@ -18,11 +18,11 @@
 #include <sys/socket.h>
 #include <linux/if.h>
 #include <linux/nl80211.h>
-#include <libnl3/netlink/genl/genl.h>
-#include <libnl3/netlink/genl/family.h>
-#include <libnl3/netlink/genl/ctrl.h>
-#include <libnl3/netlink/msg.h>
-#include <libnl3/netlink/attr.h>
+#include <netlink/genl/genl.h>
+#include <netlink/genl/family.h>
+#include <netlink/genl/ctrl.h>
+#include <netlink/msg.h>
+#include <netlink/attr.h>
 
 #include "die.h"
 #include "str.h"
@@ -116,7 +116,8 @@ static int nl80211_error_handler(struct sockaddr_nl *nla __maybe_unused,
 				 struct nlmsgerr *err,
 				 void *arg __maybe_unused)
 {
-	panic("nl80211 returned with error %d\n", err->error);
+	panic("nl80211 returned with error (%d): %s\n", err->error,
+	      nl_geterror(err->error));
 }
 
 static int nl80211_add_mon_if(struct nl80211_state *state, const char *device,
@@ -225,6 +226,10 @@ void enter_rfmon_mac80211(const char *device, char **mondev)
 		char mondevice[32];
 
 		slprintf(mondevice, sizeof(mondevice), "mon%u", n);
+
+		if (device_ifindex_get(mondevice) > 0)
+			continue;
+
 		ret = nl80211_add_mon_if(&nlstate, device, mondevice);
 		if (ret == 0) {
 			*mondev = xstrdup(mondevice);

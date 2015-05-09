@@ -17,9 +17,13 @@ define TOOL_templ
 	$(Q)$$(call RM,$$(DESTDIR)$$(SBINDIR)/$(1))
 	$(Q)$$(call RM,$$(DESTDIR)$$(MAN8DIR)/$(1).8.gz)
   $(1)/%.yy.o: $(1)/%.yy.c
-	$$(CC) $$(CFLAGS) -o $$@ -c $$<
+	$$(CCQ) $$(CFLAGS) -o $$@ -c $$<
   $(1)/%.tab.o: $(1)/%.tab.c
-	$$(CC) $$(CFLAGS) -o $$@ -c $$<
+	$$(CCQ) $$(CFLAGS) -o $$@ -c $$<
+  $(1)/%.o: %.c %.h
+	$$(CHECK) $$(CFLAGS) $$(CHECKFLAGS) $$<
+	$$(CCQ) $$(CFLAGS) -o $(1)/$$(shell basename $$@) -c $$<
   $(1)/%.o: %.c
-	$$(CC) $$(CFLAGS) -o $(1)/$$(shell basename $$@) -c $$<
+	$$(CHECK) $$(CFLAGS) $$(CHECKFLAGS) $$<
+	$$(CCQ) $$(CFLAGS) -o $(1)/$$(shell basename $$@) -c $$<
 endef

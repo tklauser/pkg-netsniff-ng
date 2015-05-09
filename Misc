@@ -1,6 +1,6 @@
 nacl:
 	$(Q)echo "$(bold)$(WHAT) $@:$(normal)"
-	$(Q)cd curvetun/ && ./nacl_build.sh ~/nacl
+	$(Q)cd curvetun/ && source ./nacl_build.sh ~/nacl
 	$(Q)source ~/.bashrc
 
 tarball.gz:  ; $(call GIT_ARCHIVE,gzip,gz)
@@ -23,11 +23,13 @@ announcement:
 	$(Q)echo -e "It can be fetched via Git:\n" >> .MAIL_MSG
 	$(Q)echo -e "   git clone git://github.com/netsniff-ng/netsniff-ng.git" >> .MAIL_MSG
 	$(Q)echo -e "   git checkout v$(VERSION_SHORT)\n" >> .MAIL_MSG
-	$(Q)echo -e "Or via HTTP:\n" >> .MAIL_MSG
-	$(Q)echo -e "   wget http://pub.netsniff-ng.org/netsniff-ng/netsniff-ng-$(VERSION_SHORT).tar.gz\n" >> .MAIL_MSG
+	$(Q)echo -e "Or via HTTP from one of our mirrors:\n" >> .MAIL_MSG
+	$(Q)echo -e "   http://pub.netsniff-ng.org/netsniff-ng/netsniff-ng-$(VERSION_SHORT).tar.gz" >> .MAIL_MSG
+	$(Q)echo -e "   http://mirror.distanz.ch/netsniff-ng/netsniff-ng-$(VERSION_SHORT).tar.gz" >> .MAIL_MSG
+	$(Q)echo -e "   http://github.com/netsniff-ng/netsniff-ng/archive/v$(VERSION_SHORT).tar.gz\n" >> .MAIL_MSG
 	$(Q)echo -e "The release can be verified via Git (see README):\n" >> .MAIL_MSG
 	$(Q)echo -e "   git tag -v v$(VERSION_SHORT)\n" >> .MAIL_MSG
-	$(Q)echo -e "Major high-level changes since the last release are:\n" >> .MAIL_MSG
+	$(Q)echo -e "Major high-level changes since the last release ($(shell $(GIT_LAST_TAG))) are:\n" >> .MAIL_MSG
 	$(Q)echo -e "   *** BLURB HERE (specific bits) ***\n" >> .MAIL_MSG
 	$(Q)echo -e "Contributions since last release:\n" >> .MAIL_MSG
 	$(GIT_PEOPLE) >> .MAIL_MSG
@@ -65,7 +67,7 @@ coverity:
 	$(Q)$(call RM,cov-int)
 	$(Q)$(call MKDIR,cov-int)
 	$(Q)./configure
-	$(Q)cov-build --dir cov-int $(MAKE) CCACHE=
+	$(Q)cov-build --dir cov-int $(MAKE)
 	$(Q)tar czvf netsniff-ng-coverity.tgz cov-int
 	$(Q)echo "Uploading snapshot to Coverity scanner"
 	$(Q)curl --form file=@netsniff-ng-coverity.tgz --form project=netsniff-ng \
@@ -101,15 +103,14 @@ help:
 	$(Q)echo " nacl                         - Execute the build_nacl script"
 	$(Q)echo " help                         - Show this help"
 	$(Q)echo "$(bold)Available parameters:$(normal)"
-	$(Q)echo " DEBUG=1 / DISTRO=1           - Enable debugging / Build for distros"
+	$(Q)echo " DEBUG=1                      - Enable debugging"
 	$(Q)echo " HARDENING=1                  - Enable GCC hardening of executables"
 	$(Q)echo " PREFIX=/path                 - Install path prefix"
 	$(Q)echo " DESTDIR=/path                - Alternative install destination path"
-	$(Q)echo " CROSS_COMPILE=arch-prefix    - Kernel-like cross-compiling architecture prefix"
-	$(Q)echo " CROSS_LD_LIBRARY_PATH=/path  - Library search path for cross-compiling"
 	$(Q)echo " CC=cgcc                      - Use sparse compiler wrapper"
 	$(Q)echo " CFLAGS=\"-O2 -Wall ...\"       - Overwrite CFLAGS for compilation"
 	$(Q)echo " CPPFLAGS=\"-I <path> ...\"     - Additional CFLAGS for compilation"
 	$(Q)echo " LDFLAGS=\"-L <path> ...\"      - Additional LDFLAGS for compilation"
-	$(Q)echo " CCACHE=                      - Do not use ccache for compilation"
+	$(Q)echo " CCACHE=ccache                - Use ccache for compilation"
+	$(Q)echo " C=1                          - Check all C source files with sparse"
 	$(Q)echo " Q=                           - Show verbose garbage"
