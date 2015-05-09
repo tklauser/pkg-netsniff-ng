@@ -20,13 +20,13 @@ Build-Depends: bison,
 Maintainer: Daniel Borkmann <daniel.borkmann@alumni.ethz.ch>
 Uploaders: Kartik Mistry <kartik@debian.org>,
            Tobias Klauser <tklauser@distanz.ch>
-Standards-Version: 3.9.5
+Standards-Version: 3.9.6
 Homepage: http://www.netsniff-ng.org/
 Vcs-Git: git://anonscm.debian.org/collab-maint/netsniff-ng.git
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/netsniff-ng;a=summary
 
 Package: netsniff-ng
-Architecture: amd64 i386 ia64 mips powerpc sparc
+Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Recommends: ntp
 Description: Linux network packet sniffer toolkit

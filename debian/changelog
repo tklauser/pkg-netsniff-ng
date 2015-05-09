@@ -1,3 +1,15 @@
+netsniff-ng (0.5.9-1) unstable; urgency=low
+
+  * New upstream release:
+    + Conditional operator does not typecheck (Closes: #750077)
+  * debian/control:
+    + Set arch:any (Closes: 749057)
+    + Updated Standards-Version to 3.9.6
+  * debian/copyright:
+    + Updated copyright and fixed wildcard match.
+
+ -- Kartik Mistry <kartik@debian.org>  Sat, 09 May 2015 20:13:45 +0530
+
 netsniff-ng (0.5.8-2) unstable; urgency=low
 
   * debian/control:

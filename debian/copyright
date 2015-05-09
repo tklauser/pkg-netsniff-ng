@@ -4,18 +4,26 @@ Upstream-Contact: Daniel Borkmann <danborkmann@googlemail.com>
 Source: http://www.netsniff-ng.org/
 
 Files: *
-Copyright: 2009-2012, Daniel Borkmann <danborkmann@googlemail.com>
-           2019-2012, Emmanuel Roullit <emmanuel@netsniff-ng.org>
+Copyright: 2009-2013, Daniel Borkmann <danborkmann@googlemail.com>
+           2009-2012, Emmanuel Roullit <emmanuel@netsniff-ng.org>
+           2014, Tobias Klauser
 License: GPL-2
 
-Files: src/proto*.h src/proto*.c
+Files: proto*.h proto*.c
 Copyright: 2009-2010, Daniel Borkmann <danborkmann@googlemail.com>
-           2012, Markus Amend.
+           2010, Emmanuel Roullit
+           2012, Markus Amend <markus@netsniff-ng.org>, Deutsche Flugsicherung GmbH
+           2012, Christoph Jaeger <christoph@netsniff-ng.org>
+           2014, Tobias Klauser
+License: GPL-2
+
+Files: staging/*
+Copyright: 2008-2010, Herbert Haas
 License: GPL-2
 
 Files: debian/*
-Copyright: 2009-2012, Daniel Borkmann <danborkmann@googlemail.com>
-           2011-2012, Kartik Mistry <kartik@debian.org>
+Copyright: 2009-2015, Daniel Borkmann <danborkmann@googlemail.com>
+           2011-2015, Kartik Mistry <kartik@debian.org>
 License: GPL-2
 
 License: GPL-2
