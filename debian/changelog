@@ -2,6 +2,7 @@ netsniff-ng (0.5.9-2) unstable; urgency=low
 
   * debian/control:
     + Remove cmake from Build-Depends, as it's no longer used.
+    + Adjust Vcs-Browser path.
 
  -- Tobias Klauser <tklauser@distanz.ch>  Wed, 19 Aug 2015 16:01:03 +0200
 
